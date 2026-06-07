@@ -35,23 +35,29 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-md">
+    <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-md relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-primary/5 rounded-full blur-[100px] -z-10"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-secondary/5 rounded-full blur-[100px] -z-10"></div>
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm space-y-xl"
+        className="w-full max-w-sm space-y-xl z-10"
       >
         <div className="flex flex-col items-center gap-md">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
+          <Link href="/">
+            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg hover:rotate-3 transition-transform">
+              <GraduationCap className="w-8 h-8 text-white" />
+            </div>
+          </Link>
           <div className="text-center">
             <h1 className="font-plus-jakarta text-3xl font-bold text-on-surface">Welcome Back</h1>
-            <p className="text-on-surface-variant text-sm font-medium">Continue your nursing journey.</p>
+            <p className="text-on-surface-variant text-sm font-medium">Continue your nursing success.</p>
           </div>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-white p-lg rounded-3xl academic-card shadow-xl space-y-lg border border-outline-variant/30">
+        <form onSubmit={handleLogin} className="bg-white/80 backdrop-blur-md p-lg rounded-[32px] shadow-2xl space-y-lg border border-white/20">
           {error && (
             <div className="bg-error/10 text-error p-md rounded-xl text-xs font-bold border border-error/20">
               {error}
@@ -68,7 +74,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-14 pl-12 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary text-sm font-medium transition-all"
+                  className="w-full h-14 pl-12 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary text-sm font-medium transition-all"
                   placeholder="name@college.edu"
                 />
               </div>
@@ -83,7 +89,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-14 pl-12 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary text-sm font-medium transition-all"
+                  className="w-full h-14 pl-12 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary text-sm font-medium transition-all"
                   placeholder="••••••••"
                 />
               </div>
@@ -93,14 +99,14 @@ export default function LoginPage() {
           <button 
             type="submit"
             disabled={isLoading}
-            className="w-full h-14 bg-primary text-on-primary rounded-2xl font-bold text-md shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="w-full h-14 bg-primary text-on-primary rounded-2xl font-bold text-md shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2 group"
           >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Sign In <ArrowRight className="w-5 h-5" /></>}
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Sign In <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>}
           </button>
         </form>
 
         <p className="text-center text-sm font-medium text-on-surface-variant">
-          Don't have an account? <Link href="/signup" className="text-primary font-bold hover:underline">Create one</Link>
+          Don't have an account? <Link href="/signup" className="text-primary font-bold hover:underline">Create Account</Link>
         </p>
       </motion.div>
     </div>
