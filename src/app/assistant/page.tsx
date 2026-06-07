@@ -128,7 +128,7 @@ export default function AssistantPage() {
 
     // 4. Save User Message to Supabase
     if (!sessionId) return; // TS safety
-    await saveChatMessage(sessionId, "user", userMessage.content);
+    await saveChatMessage(sessionId!, "user", userMessage.content);
     
     try {
       const response = await fetch("/api/ai/stream", {
@@ -164,7 +164,7 @@ export default function AssistantPage() {
       }
 
       // 5. Save Finished AI Message to Supabase
-      await saveChatMessage(sessionId, "assistant", aiContent);
+      await saveChatMessage(sessionId!, "assistant", aiContent);
 
     } catch (error: any) {
       const errorMessage: Message = {
