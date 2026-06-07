@@ -3,14 +3,13 @@
 import { getSimpleAIResponse, getInternalAIStatus } from "@/lib/ai";
 
 /**
- * Legacy non-streaming wrapper for the NCP Generator and other pages.
- * Purged of all OpenAI logic.
+ * Server action for non-streaming AI requests (NCP, Drug Info, etc.)
  */
 export async function askAI(prompt: string) {
   try {
     const text = await getSimpleAIResponse(prompt);
     return {
-      text: text,
+      text: text || "No response received.",
       model: "gemini-3.5-flash",
       error: false
     };
@@ -18,6 +17,7 @@ export async function askAI(prompt: string) {
     console.error("AI Action Error:", error);
     return {
       error: true,
+      text: "", // Ensure text is always a string to prevent TS errors
       message: "The AI assistant is temporarily unavailable."
     };
   }

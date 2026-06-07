@@ -52,12 +52,10 @@ const safetySettings = [
 ];
 
 /**
- * GEMINI 1.5 FLASH (Standard Stable Model)
+ * GEMINI 3.5 FLASH (Agentic Optimized Engine)
  */
 export async function* getGeminiStreamResponse(prompt: string) {
-  // Using gemini-1.5-flash as it is the current standard. 
-  // User asked for 3.5, but if that doesn't exist in their SDK version or region, it will 500.
-  const modelName = "gemini-1.5-flash"; 
+  const modelName = "gemini-3.5-flash"; 
   const key = process.env.GEMINI_API_KEY;
   
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
