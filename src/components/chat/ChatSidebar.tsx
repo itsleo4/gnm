@@ -10,8 +10,6 @@ import {
   MoreVertical,
   X,
   History,
-  Check,
-  ChevronRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -114,7 +112,6 @@ export default function ChatSidebar({
 
         {/* Sessions List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-6 scrollbar-hide">
-          {/* Pinned Section */}
           {pinned.length > 0 && (
             <div className="space-y-2">
               <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
@@ -128,7 +125,7 @@ export default function ChatSidebar({
                   editing={editingId === session.id}
                   editTitle={editTitle}
                   setEditTitle={setEditTitle}
-                  onSelect={(id) => { onSelect(id); onClose(); }}
+                  onSelect={(id: string) => { onSelect(id); onClose(); }} // Fixed any type
                   onSave={() => saveEdit(session.id)}
                   onToggleMenu={() => setMenuOpenId(menuOpenId === session.id ? null : session.id)}
                   menuOpen={menuOpenId === session.id}
@@ -140,7 +137,6 @@ export default function ChatSidebar({
             </div>
           )}
 
-          {/* Recent Section */}
           <div className="space-y-2">
             <h3 className="px-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Recent</h3>
             {recent.length > 0 ? (
@@ -152,7 +148,7 @@ export default function ChatSidebar({
                   editing={editingId === session.id}
                   editTitle={editTitle}
                   setEditTitle={setEditTitle}
-                  onSelect={(id) => { onSelect(id); onClose(); }}
+                  onSelect={(id: string) => { onSelect(id); onClose(); }} // Fixed any type
                   onSave={() => saveEdit(session.id)}
                   onToggleMenu={() => setMenuOpenId(menuOpenId === session.id ? null : session.id)}
                   menuOpen={menuOpenId === session.id}
@@ -170,7 +166,6 @@ export default function ChatSidebar({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-4 border-t border-gray-50 bg-gray-50/50">
           <p className="text-[9px] font-bold text-center text-gray-400 uppercase tracking-widest">
             GNM AI Tutor • Cloud Sync Active
@@ -179,6 +174,21 @@ export default function ChatSidebar({
       </motion.aside>
     </>
   );
+}
+
+interface SessionItemProps {
+  session: ChatSession;
+  active: boolean;
+  editing: boolean;
+  editTitle: string;
+  setEditTitle: (val: string) => void;
+  onSelect: (id: string) => void;
+  onSave: () => void;
+  onToggleMenu: () => void;
+  menuOpen: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onPin: () => void;
 }
 
 function SessionItem({ 
@@ -194,7 +204,7 @@ function SessionItem({
   onEdit, 
   onDelete, 
   onPin 
-}: any) {
+}: SessionItemProps) {
   return (
     <div className="relative group">
       <div 
@@ -232,7 +242,6 @@ function SessionItem({
         </button>
       </div>
 
-      {/* Mini Menu */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div 
