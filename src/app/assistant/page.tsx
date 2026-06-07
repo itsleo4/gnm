@@ -153,7 +153,7 @@ export default function AssistantPage() {
                     <div className="flex items-center gap-1.5 mb-2 opacity-70">
                       <Sparkles className="w-3.5 h-3.5" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">
-                        {msg.type === "complex" ? "ChatGPT (GPT-4 Turbo)" : "Google Gemini 1.5"}
+                        {msg.type === "complex" ? "ChatGPT (GPT-4o)" : "Google Gemini 3.5"}
                       </span>
                     </div>
                   )}
@@ -192,7 +192,7 @@ export default function AssistantPage() {
                 )}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                GEMINI 1.5
+                GEMINI 3.5
               </button>
               <button 
                 onClick={() => setSelectedModel("openai")}

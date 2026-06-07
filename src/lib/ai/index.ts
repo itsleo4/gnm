@@ -2,7 +2,6 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 import OpenAI from "openai";
 
 // --- DEV-ONLY STATUS TRACKING ---
-// This will reset on server restart, which is fine for local dev debugging.
 let lastAIStatus = {
   provider: "None",
   model: "None",
@@ -30,7 +29,6 @@ function updateStatus(provider: string, model: string, status: string, error: st
     timestamp: new Date().toISOString()
   };
 }
-// --------------------------------
 
 const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -39,10 +37,16 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
-function getGeminiModel(modelName: string = "gemini-1.5-flash") {
+function getGeminiModel(modelName: string = "gemini-3.5-flash") {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
-  return new GoogleGenerativeAI(key).getGenerativeModel({ model: modelName, safetySettings });
+  
+  // Initialize with the v1 version explicitly to support the newest Gemini 3.5 architecture
+  const genAI = new GoogleGenerativeAI(key);
+  return genAI.getGenerativeModel({ 
+    model: modelName, 
+    safetySettings 
+  });
 }
 
 function getOpenAIClient() {
@@ -52,7 +56,8 @@ function getOpenAIClient() {
 }
 
 export async function getSimpleAIResponse(prompt: string) {
-  const model = "gemini-1.5-flash";
+  // UPGRADED TO GEMINI 3.5 FLASH (Launched May 2026)
+  const model = "gemini-3.5-flash"; 
   try {
     const gemini = getGeminiModel(model);
     const result = await gemini.generateContent(prompt);
@@ -60,13 +65,27 @@ export async function getSimpleAIResponse(prompt: string) {
     updateStatus("Gemini", model, "Connected");
     return text;
   } catch (error: any) {
+    console.error("[GEMINI 3.5 ERROR]", error);
     updateStatus("Gemini", model, `Error ${error.status || "FAIL"}`, error.message);
+    
+    // Automatic fallback to 1.5 if the account hasn't been provisioned for 3.5 yet
+    if (error?.status === 404) {
+      try {
+        const fallbackModel = "gemini-1.5-flash";
+        const geminiFallback = getGeminiModel(fallbackModel);
+        const result = await geminiFallback.generateContent(prompt);
+        return result.response.text();
+      } catch (inner) {
+        throw error; // Throw original 404
+      }
+    }
     throw error;
   }
 }
 
 export async function getComplexAIResponse(prompt: string) {
-  const model = "gpt-4o-mini";
+  // Using gpt-4o as the complex counterpart
+  const model = "gpt-4o";
   try {
     const client = getOpenAIClient();
     const response = await client.chat.completions.create({
