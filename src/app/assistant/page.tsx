@@ -76,16 +76,17 @@ export default function AssistantPage() {
     try {
       const response = await askAI(input, selectedProvider);
       
-      if (response.error) {
+      if (response.error === true) {
         throw new Error(response.message);
       }
 
+      // Now TS knows response.error is false, so text/model/downgraded exist
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response.text,
-        sourceModel: response.model,
-        isDowngraded: response.downgraded,
+        content: response.text as string,
+        sourceModel: response.model as string,
+        isDowngraded: response.downgraded as boolean,
       };
 
       if (response.downgraded) {

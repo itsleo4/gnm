@@ -2,24 +2,38 @@
 
 import { getSimpleAIResponse, getComplexAIResponse, getInternalAIStatus } from "@/lib/ai";
 
-export async function askAI(prompt: string, model: "gemini" | "openai" = "gemini") {
+export type AIResponse = {
+  text: string;
+  model: string;
+  downgraded: boolean;
+  error?: false;
+} | {
+  error: true;
+  message: string;
+  text?: never;
+  model?: never;
+  downgraded?: never;
+};
+
+export async function askAI(prompt: string, modelProvider: "gemini" | "openai" = "gemini"): Promise<AIResponse> {
   const isDev = process.env.NODE_ENV === "development";
 
   try {
-    if (model === "openai") {
+    if (modelProvider === "openai") {
       const result = await getComplexAIResponse(prompt);
-      // We return an object now for OpenAI to handle the downgrade UI
       return {
         text: result.content,
         model: result.modelUsed,
-        downgraded: result.downgraded
+        downgraded: result.downgraded,
+        error: false
       };
     } else {
       const text = await getSimpleAIResponse(prompt);
       return {
         text: text,
         model: "gemini-3.5-flash",
-        downgraded: false
+        downgraded: false,
+        error: false
       };
     }
   } catch (error: any) {
@@ -28,7 +42,7 @@ export async function askAI(prompt: string, model: "gemini" | "openai" = "gemini
     if (isDev) {
       return {
         error: true,
-        message: `[DEV ERROR] ${model.toUpperCase()} | Status: ${error.status || "FAIL"} | Message: ${error.message || "Unknown error"}`
+        message: `[DEV ERROR] ${modelProvider.toUpperCase()} | Status: ${error.status || "FAIL"} | Message: ${error.message || "Unknown error"}`
       };
     }
 
