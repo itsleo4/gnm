@@ -1,37 +1,23 @@
 "use server";
 
-import {
-  getSimpleAIResponse,
-  getComplexAIResponse,
-  isAIError,
-  formatAIError,
-  type AIError,
-} from "@/lib/ai";
+import { getSimpleAIResponse, getComplexAIResponse } from "@/lib/ai";
 
-export interface AIActionResult {
-  success: boolean;
-  text?: string;
-  error?: string;
-  /** Only present in development mode for debugging */
-  devError?: AIError;
-}
+export async function askAI(prompt: string, isComplex: boolean) {
+  const isDev = process.env.NODE_ENV === "development";
 
-export async function askAI(prompt: string, isComplex: boolean): Promise<AIActionResult> {
-  if (!prompt?.trim()) {
-    return { success: false, error: "Prompt cannot be empty." };
+  try {
+    if (isComplex) {
+      return await getComplexAIResponse(prompt);
+    } else {
+      return await getSimpleAIResponse(prompt);
+    }
+  } catch (error: any) {
+    // Detailed server-side logging is already handled in lib/ai
+    
+    if (isDev) {
+      return `[DEV ERROR] ${isComplex ? "OpenAI" : "Gemini"}: ${error.message || "Unknown error"}`;
+    }
+
+    return "The AI assistant is temporarily unavailable. Please try again in a few moments.";
   }
-
-  const result = isComplex
-    ? await getComplexAIResponse(prompt)
-    : await getSimpleAIResponse(prompt);
-
-  if (isAIError(result)) {
-    return {
-      success: false,
-      error: formatAIError(result),
-      devError: process.env.NODE_ENV === "development" ? result : undefined,
-    };
-  }
-
-  return { success: true, text: result };
 }
