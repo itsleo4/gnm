@@ -20,22 +20,56 @@ CREATE TABLE public.study_stats (
   current_goal TEXT DEFAULT 'Complete your first lesson'
 );
 
--- 3. Enable Row Level Security (RLS)
+-- 3. Create Chat Sessions Table (History)
+CREATE TABLE public.chat_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  title TEXT DEFAULT 'New Conversation',
+  is_pinned BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 4. Create Messages Table
+CREATE TABLE public.messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID REFERENCES public.chat_sessions ON DELETE CASCADE NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 5. Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- 4. Set Up Policies
--- Profiles: Users can only see and update their own profile
+-- 6. Set Up Policies
+
+-- Profiles
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Study Stats: Users can only see and update their own stats
+-- Study Stats
 CREATE POLICY "Users can view own stats" ON public.study_stats FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own stats" ON public.study_stats FOR UPDATE USING (auth.uid() = user_id);
 
--- 5. Automatic Profile Creation Trigger
--- This function inserts a row into public.profiles and public.study_stats 
--- whenever a new user signs up in auth.users.
+-- Chat Sessions
+CREATE POLICY "Users can view own chats" ON public.chat_sessions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can create own chats" ON public.chat_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own chats" ON public.chat_sessions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own chats" ON public.chat_sessions FOR DELETE USING (auth.uid() = user_id);
+
+-- Messages
+-- Users can only see messages belonging to their own sessions
+CREATE POLICY "Users can view own messages" ON public.messages FOR SELECT 
+USING (EXISTS (SELECT 1 FROM public.chat_sessions WHERE id = session_id AND user_id = auth.uid()));
+
+CREATE POLICY "Users can insert own messages" ON public.messages FOR INSERT 
+WITH CHECK (EXISTS (SELECT 1 FROM public.chat_sessions WHERE id = session_id AND user_id = auth.uid()));
+
+-- 7. Automatic Profile Creation Trigger
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
