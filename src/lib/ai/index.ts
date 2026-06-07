@@ -2,13 +2,22 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const geminiKey = process.env.GEMINI_API_KEY;
+if (!geminiKey) {
+  console.warn("WARNING: GEMINI_API_KEY is missing from environment variables.");
+}
+const genAI = new GoogleGenerativeAI(geminiKey || "");
 export const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // Initialize OpenAI
+const openaiKey = process.env.OPENAI_API_KEY;
+if (!openaiKey) {
+  console.warn("WARNING: OPENAI_API_KEY is missing from environment variables.");
+}
 export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
+  apiKey: openaiKey || "",
 });
+
 
 export async function getSimpleAIResponse(prompt: string) {
   const startTime = Date.now();

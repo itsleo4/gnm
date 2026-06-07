@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
+/* 
+  Note: If you see "Unknown at rule" warnings for @theme or @apply in VS Code, 
+  it's because the built-in CSS validator doesn't support Tailwind CSS v4 yet.
+  These are valid and will work correctly in the build.
+*/
+
 @theme {
+
   --font-plus-jakarta: "Plus Jakarta Sans", sans-serif;
   --font-inter: "Inter", sans-serif;
 

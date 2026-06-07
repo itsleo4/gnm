@@ -46,6 +46,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<"gemini" | "openai">("gemini");
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -67,17 +68,14 @@ export default function AssistantPage() {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
-
-    // AI Decision Routing
-    const isComplex = input.length > 50 || input.toLowerCase().includes("reason") || input.toLowerCase().includes("compare");
     
     try {
-      const response = await askAI(input, isComplex);
+      const response = await askAI(input, selectedModel);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: response,
-        type: isComplex ? "complex" : "simple",
+        type: selectedModel === "openai" ? "complex" : "simple",
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
@@ -153,9 +151,9 @@ export default function AssistantPage() {
                 )}>
                   {msg.type && (
                     <div className="flex items-center gap-1.5 mb-2 opacity-70">
-                      <Sparkles className="w-3 h-3" />
+                      <Sparkles className="w-3.5 h-3.5" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">
-                        {msg.type === "complex" ? "Advanced AI Logic" : "Neural Response"}
+                        {msg.type === "complex" ? "ChatGPT (GPT-4 Turbo)" : "Google Gemini 1.5"}
                       </span>
                     </div>
                   )}
@@ -182,7 +180,33 @@ export default function AssistantPage() {
 
       {/* Input Container */}
       <footer className="fixed bottom-24 w-full px-md pb-md">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto space-y-3">
+          {/* Model Selector */}
+          <div className="flex justify-center">
+            <div className="bg-white/80 backdrop-blur-md border border-outline-variant/30 rounded-full p-1 flex items-center gap-1 shadow-sm">
+              <button 
+                onClick={() => setSelectedModel("gemini")}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-2",
+                  selectedModel === "gemini" ? "bg-primary text-white shadow-md scale-105" : "text-on-surface-variant hover:bg-surface-container"
+                )}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                GEMINI 1.5
+              </button>
+              <button 
+                onClick={() => setSelectedModel("openai")}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-2",
+                  selectedModel === "openai" ? "bg-inverse-surface text-inverse-on-surface shadow-md scale-105" : "text-on-surface-variant hover:bg-surface-container"
+                )}
+              >
+                <Bot className="w-3.5 h-3.5" />
+                GPT-4 TURBO
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white rounded-2xl shadow-xl border border-outline-variant/30 p-2 flex items-center gap-2">
             <button className="w-10 h-10 rounded-xl hover:bg-surface-container flex items-center justify-center text-on-surface-variant">
               <Paperclip className="w-5 h-5" />
@@ -191,7 +215,7 @@ export default function AssistantPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask me anything about Nursing..."
+              placeholder={selectedModel === "gemini" ? "Ask Gemini anything..." : "Ask GPT-4 Turbo anything..."}
               className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium h-12"
             />
             <button 
@@ -199,7 +223,9 @@ export default function AssistantPage() {
               disabled={!input.trim() || isLoading}
               className={cn(
                 "w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95",
-                input.trim() ? "bg-primary text-white shadow-lg" : "bg-surface-container text-outline"
+                input.trim() 
+                  ? selectedModel === "openai" ? "bg-inverse-surface text-white shadow-lg" : "bg-primary text-white shadow-lg"
+                  : "bg-surface-container text-outline"
               )}
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
