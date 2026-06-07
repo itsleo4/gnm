@@ -6,6 +6,10 @@ export async function proxy(request: NextRequest) {
     request,
   })
 
+  // Temporarily bypass auth logic to diagnose 404
+  return supabaseResponse;
+  
+  /*
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -57,6 +61,7 @@ export async function proxy(request: NextRequest) {
   }
 
   return supabaseResponse
+  */
 }
 
 export const config = {
