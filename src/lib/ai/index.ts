@@ -1,5 +1,25 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import OpenAI from "openai";
+
+// Safety settings for Gemini to allow academic medical/nursing content
+const safetySettings = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+];
 
 // Helper to get Gemini Model (Dynamic to prevent env caching issues)
 function getGeminiModel() {
@@ -9,7 +29,10 @@ function getGeminiModel() {
     throw new Error("GEMINI_API_KEY_NOT_FOUND");
   }
   const genAI = new GoogleGenerativeAI(key);
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  return genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",
+    safetySettings
+  });
 }
 
 // Helper to get OpenAI Client (Dynamic)
@@ -54,7 +77,13 @@ export async function getComplexAIResponse(prompt: string) {
     const client = getOpenAIClient();
     const response = await client.chat.completions.create({
       model: "gpt-4-turbo",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a professional GNM (General Nursing and Midwifery) assistant. Provide accurate, academic, and practical nursing information." 
+        },
+        { role: "user", content: prompt }
+      ],
     });
 
     const content = response.choices[0].message.content;
