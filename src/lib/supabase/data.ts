@@ -6,11 +6,15 @@ export async function getProfile() {
   
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single();
+
+  if (error) {
+    console.error("Error fetching profile:", error.message);
+  }
 
   return profile;
 }
@@ -21,11 +25,15 @@ export async function getStats() {
   
   if (!user) return null;
 
-  const { data: stats } = await supabase
+  const { data: stats, error } = await supabase
     .from('study_stats')
     .select('*')
     .eq('user_id', user.id)
     .single();
+
+  if (error) {
+    console.error("Error fetching stats:", error.message);
+  }
 
   return stats;
 }

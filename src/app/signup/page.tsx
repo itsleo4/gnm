@@ -49,6 +49,7 @@ export default function SignupPage() {
       setError(error.message);
       setIsLoading(false);
     } else {
+      router.refresh();
       router.push("/dashboard");
     }
   };
