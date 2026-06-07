@@ -5,39 +5,25 @@ import TopBar from "@/components/layout/TopBar";
 import BottomNav from "@/components/layout/BottomNav";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import { 
-  Bot, 
-  User, 
-  Send, 
-  GraduationCap,
-  Loader2,
-  Paperclip,
-  Zap,
-  Menu,
-  Database,
-  AlertCircle
+  Bot, User, Send, GraduationCap, Loader2, Paperclip, 
+  Menu, Database, AlertCircle, Stethoscope, Pill, FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { 
-  getChatSessions, 
-  getChatMessages, 
-  createChatSession, 
-  saveChatMessage, 
-  deleteChatSession, 
-  renameChatSession, 
-  togglePinChat 
+  getChatSessions, getChatMessages, createChatSession, 
+  saveChatMessage, deleteChatSession, renameChatSession, togglePinChat 
 } from "@/app/actions/chat";
 
+// All imports are at top now — this was the production crash cause
 const MODES = [
   { id: "explain", label: "Explain Topic", icon: GraduationCap, color: "bg-primary" },
   { id: "drug", label: "Drug Info", icon: Pill, color: "bg-tertiary" },
   { id: "ncp", label: "NCP Help", icon: Stethoscope, color: "bg-secondary" },
   { id: "exam", label: "Exam Prep", icon: FileText, color: "bg-error" },
 ];
-
-import { Stethoscope, Pill, FileText } from "lucide-react";
 
 type Message = {
   id: string;
@@ -57,16 +43,10 @@ export default function AssistantPage() {
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 1. Initial Load: Fetch History
   useEffect(() => {
     const loadHistory = async () => {
       try {
         const history = await getChatSessions();
-        if (history.length === 0) {
-          // Double check if it's an error or just empty
-          // We don't have a direct way to check 'error' here as it's swallowed in action
-          // but we can assume success for now.
-        }
         setSessions(history);
       } catch (err) {
         setDbError(true);
@@ -76,7 +56,6 @@ export default function AssistantPage() {
     loadHistory();
   }, []);
 
-  // 2. Load Messages when session changes
   useEffect(() => {
     const loadMessages = async () => {
       if (currentSessionId) {
@@ -136,24 +115,25 @@ export default function AssistantPage() {
     try {
       let targetSessionId = currentSessionId;
 
-      // Ensure Session Exists
       if (!targetSessionId) {
         try {
           const newSession = await createChatSession(userMessageContent.slice(0, 30) + "...");
           targetSessionId = newSession.id;
           setCurrentSessionId(targetSessionId);
           setSessions(prev => [newSession, ...prev]);
+          setDbError(false); // Clear error if creation succeeds
         } catch (err) {
           setDbError(true);
-          console.error("Create session failed - Check Supabase Tables", err);
+          console.error("Create session failed:", err);
         }
       }
 
       const activeId: string | null = targetSessionId;
 
-      // Save User Message
       if (activeId) {
-        saveChatMessage(activeId, "user", userMessageContent).catch(() => setDbError(true));
+        saveChatMessage(activeId, "user", userMessageContent)
+          .then(() => setDbError(false))
+          .catch(() => setDbError(true));
       }
       
       const response = await fetch("/api/ai/stream", {
@@ -162,7 +142,7 @@ export default function AssistantPage() {
         body: JSON.stringify({ prompt: userMessageContent }),
       });
 
-      if (!response.ok) throw new Error("Failed to fetch stream");
+      if (!response.ok) throw new Error(`Stream failed: ${response.status}`);
 
       const reader = response.body?.getReader();
       const textDecoder = new TextDecoder();
@@ -175,10 +155,8 @@ export default function AssistantPage() {
       while (true) {
         const { done, value } = await reader!.read();
         if (done) break;
-        
         const chunk = textDecoder.decode(value);
         aiContent += chunk;
-        
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last.id === aiMessageId) {
@@ -188,19 +166,18 @@ export default function AssistantPage() {
         });
       }
 
-      // Save Assistant Message
       if (activeId) {
-        saveChatMessage(activeId, "assistant", aiContent).catch(() => setDbError(true));
+        saveChatMessage(activeId, "assistant", aiContent)
+          .catch(() => setDbError(true));
       }
 
     } catch (error: any) {
       console.error("AI Error:", error);
-      const errorMessage: Message = {
+      setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I'm having trouble connecting to my engine. Ensure your API Keys are set in Vercel.",
-      };
-      setMessages(prev => [...prev, errorMessage]);
+        content: `Error: ${error.message || "Could not connect to AI engine."}`,
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -211,18 +188,14 @@ export default function AssistantPage() {
       await deleteChatSession(id);
       setSessions(prev => prev.filter(s => s.id !== id));
       if (currentSessionId === id) setCurrentSessionId(null);
-    } catch (err) {
-      console.error("Delete failed", err);
-    }
+    } catch (err) { console.error("Delete failed", err); }
   };
 
   const handleRename = async (id: string, title: string) => {
     try {
       await renameChatSession(id, title);
       setSessions(prev => prev.map(s => s.id === id ? { ...s, title } : s));
-    } catch (err) {
-      console.error("Rename failed", err);
-    }
+    } catch (err) { console.error("Rename failed", err); }
   };
 
   const handleTogglePin = async (id: string, isPinned: boolean) => {
@@ -232,9 +205,7 @@ export default function AssistantPage() {
         const updated = prev.map(s => s.id === id ? { ...s, is_pinned: isPinned } : s);
         return updated.sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
       });
-    } catch (err) {
-      console.error("Pin failed", err);
-    }
+    } catch (err) { console.error("Pin failed", err); }
   };
 
   return (
@@ -253,10 +224,7 @@ export default function AssistantPage() {
 
       <header className="fixed top-0 w-full h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 flex items-center justify-between px-md lg:pl-[300px]">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 -ml-2 hover:bg-gray-50 rounded-xl"
-          >
+          <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl">
             <Menu className="w-5 h-5 text-slate-600" />
           </button>
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-md shadow-primary/10">
@@ -269,12 +237,11 @@ export default function AssistantPage() {
             </p>
           </div>
         </div>
-
         <div className="flex items-center gap-4">
           {dbError && (
             <div className="hidden md:flex items-center gap-1.5 text-error">
               <Database className="w-3.5 h-3.5" />
-              <span className="text-[9px] font-black uppercase">DB Sync Error</span>
+              <span className="text-[9px] font-black uppercase">DB Error</span>
             </div>
           )}
           <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
@@ -286,22 +253,18 @@ export default function AssistantPage() {
       
       <main className="flex-1 pt-20 pb-44 overflow-y-auto scrollbar-hide lg:ml-[280px]" ref={scrollRef}>
         <div className="container-responsive max-w-2xl space-y-md py-md px-4">
-
-          {/* Database Setup Warning */}
           <AnimatePresence>
             {dbError && (
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-error/5 border border-error/20 rounded-2xl p-4 flex items-start gap-4 mb-6"
+                className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-4 mb-4"
               >
-                <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error shrink-0">
-                  <AlertCircle className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-bold text-xs text-error uppercase tracking-wider">Supabase Tables Missing</h3>
-                  <p className="text-[11px] text-error/80 leading-relaxed font-medium">
-                    Chat history is not being saved. Please copy the code from **supabase_schema.sql** in your project and run it in the **Supabase SQL Editor**.
+                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-xs text-amber-700 uppercase tracking-wider">Chat History Sync Issue</h3>
+                  <p className="text-[11px] text-amber-600 mt-1 leading-relaxed">
+                    AI is working but history cannot be saved. Ensure your Supabase tables are created and the SQL schema has been run.
                   </p>
                 </div>
               </motion.div>
@@ -309,18 +272,11 @@ export default function AssistantPage() {
           </AnimatePresence>
 
           {messages.length <= 1 && (
-            <motion.section 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="grid grid-cols-2 gap-3"
-            >
+            <motion.section initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="grid grid-cols-2 gap-3">
               {MODES.map((mode) => (
                 <button
                   key={mode.id}
-                  onClick={() => {
-                    setActiveMode(mode.id);
-                    setInput(`Educator Mode: ${mode.label}. Please explain...`);
-                  }}
+                  onClick={() => { setActiveMode(mode.id); setInput(`Educator Mode: ${mode.label}. Please explain...`); }}
                   className={cn(
                     "flex flex-col items-center gap-2 p-6 rounded-2xl border border-gray-100 bg-white shadow-sm transition-all active:scale-95 text-center group hover:border-primary/30",
                     activeMode === mode.id && "ring-2 ring-primary border-primary"
@@ -337,17 +293,11 @@ export default function AssistantPage() {
 
           <div className="space-y-6">
             {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                  "flex gap-3",
-                  msg.role === "user" ? "flex-row-reverse" : "flex-row"
-                )}
+              <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className={cn("flex gap-3", msg.role === "user" ? "flex-row-reverse" : "flex-row")}
               >
                 <div className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm font-bold text-[10px]",
+                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
                   msg.role === "user" ? "bg-primary text-white" : "bg-white text-primary border border-gray-100"
                 )}>
                   {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -355,28 +305,22 @@ export default function AssistantPage() {
                 <div className="flex flex-col gap-1 max-w-[85%]">
                   <div className={cn(
                     "p-4 rounded-2xl shadow-sm text-sm leading-relaxed prose prose-sm max-w-none",
-                    msg.role === "user" 
-                      ? "bg-primary text-white rounded-tr-sm" 
-                      : "bg-white text-slate-800 rounded-tl-sm border border-gray-100"
+                    msg.role === "user" ? "bg-primary text-white rounded-tr-sm" : "bg-white text-slate-800 rounded-tl-sm border border-gray-100"
                   )}>
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({children}) => <p className={msg.role === "user" ? "text-white prose-invert m-0" : "m-0"}>{children}</p>,
-                        h1: ({children}) => <h1 className="text-lg font-bold my-2">{children}</h1>,
-                        h2: ({children}) => <h2 className="text-md font-bold my-2">{children}</h2>,
-                        ul: ({children}) => <ul className="list-disc ml-4 my-2">{children}</ul>,
-                        ol: ({children}) => <ol className="list-decimal ml-4 my-2">{children}</ol>,
-                      }}
-                    >
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                      p: ({children}) => <p className={msg.role === "user" ? "text-white m-0" : "m-0"}>{children}</p>,
+                      h1: ({children}) => <h1 className="text-lg font-bold my-2">{children}</h1>,
+                      h2: ({children}) => <h2 className="text-md font-bold my-2">{children}</h2>,
+                      ul: ({children}) => <ul className="list-disc ml-4 my-2">{children}</ul>,
+                      ol: ({children}) => <ol className="list-decimal ml-4 my-2">{children}</ol>,
+                    }}>
                       {msg.content}
                     </ReactMarkdown>
                   </div>
                 </div>
               </motion.div>
             ))}
-
-            {isLoading && !messages[messages.length-1].content && (
+            {isLoading && messages[messages.length-1]?.content === "" && (
               <div className="flex gap-3 items-center">
                 <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center shadow-sm">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
@@ -397,7 +341,7 @@ export default function AssistantPage() {
             <input 
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
               placeholder="Ask anything..."
               className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium h-12"
             />
