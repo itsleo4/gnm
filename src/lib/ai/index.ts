@@ -40,13 +40,8 @@ const safetySettings = [
 function getGeminiModel(modelName: string = "gemini-3.5-flash") {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
-  
-  // Initialize with the v1 version explicitly to support the newest Gemini 3.5 architecture
   const genAI = new GoogleGenerativeAI(key);
-  return genAI.getGenerativeModel({ 
-    model: modelName, 
-    safetySettings 
-  });
+  return genAI.getGenerativeModel({ model: modelName, safetySettings });
 }
 
 function getOpenAIClient() {
@@ -56,7 +51,6 @@ function getOpenAIClient() {
 }
 
 export async function getSimpleAIResponse(prompt: string) {
-  // UPGRADED TO GEMINI 3.5 FLASH (Launched May 2026)
   const model = "gemini-3.5-flash"; 
   try {
     const gemini = getGeminiModel(model);
@@ -65,40 +59,63 @@ export async function getSimpleAIResponse(prompt: string) {
     updateStatus("Gemini", model, "Connected");
     return text;
   } catch (error: any) {
-    console.error("[GEMINI 3.5 ERROR]", error);
     updateStatus("Gemini", model, `Error ${error.status || "FAIL"}`, error.message);
-    
-    // Automatic fallback to 1.5 if the account hasn't been provisioned for 3.5 yet
-    if (error?.status === 404) {
-      try {
-        const fallbackModel = "gemini-1.5-flash";
-        const geminiFallback = getGeminiModel(fallbackModel);
-        const result = await geminiFallback.generateContent(prompt);
-        return result.response.text();
-      } catch (inner) {
-        throw error; // Throw original 404
-      }
-    }
     throw error;
   }
 }
 
-export async function getComplexAIResponse(prompt: string) {
-  // Using gpt-4o as the complex counterpart
-  const model = "gpt-4o";
+/**
+ * Advanced GPT handler with auto-downgrade logic for GPT-5.5 series
+ */
+export async function getComplexAIResponse(prompt: string, forcedModel?: string) {
+  const primaryModel = forcedModel || "gpt-5.5-instant";
+  const fallbackModel = "gpt-5.5-mini";
+  
+  const client = getOpenAIClient();
+  
   try {
-    const client = getOpenAIClient();
+    // Attempt with Primary Model (GPT-5.5 Instant)
     const response = await client.chat.completions.create({
-      model,
+      model: primaryModel,
       messages: [
         { role: "system", content: "You are a professional GNM assistant." },
         { role: "user", content: prompt }
       ],
     });
-    updateStatus("OpenAI", model, "Connected");
-    return response.choices[0].message.content || "";
+    
+    updateStatus("OpenAI", primaryModel, "Connected");
+    return {
+      content: response.choices[0].message.content || "",
+      modelUsed: primaryModel,
+      downgraded: false
+    };
   } catch (error: any) {
-    updateStatus("OpenAI", model, `Error ${error.status || "FAIL"}`, error.message);
+    // Check if it's a Rate Limit (429) or Tier restriction
+    if (error?.status === 429 || error?.code === 'rate_limit_exceeded' || error?.status === 403) {
+      console.warn(`[GPT-5.5 LIMIT] ${primaryModel} limit reached. Auto-downgrading to ${fallbackModel}.`);
+      
+      try {
+        const fallbackResponse = await client.chat.completions.create({
+          model: fallbackModel,
+          messages: [
+            { role: "system", content: "You are a professional GNM assistant. (Running in Mini mode due to limit)" },
+            { role: "user", content: prompt }
+          ],
+        });
+        
+        updateStatus("OpenAI", fallbackModel, "Connected (Downgraded)");
+        return {
+          content: fallbackResponse.choices[0].message.content || "",
+          modelUsed: fallbackModel,
+          downgraded: true
+        };
+      } catch (innerError: any) {
+        updateStatus("OpenAI", fallbackModel, `Error ${innerError.status || "FAIL"}`, innerError.message);
+        throw innerError;
+      }
+    }
+    
+    updateStatus("OpenAI", primaryModel, `Error ${error.status || "FAIL"}`, error.message);
     throw error;
   }
 }

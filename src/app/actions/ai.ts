@@ -7,24 +7,39 @@ export async function askAI(prompt: string, model: "gemini" | "openai" = "gemini
 
   try {
     if (model === "openai") {
-      return await getComplexAIResponse(prompt);
+      const result = await getComplexAIResponse(prompt);
+      // We return an object now for OpenAI to handle the downgrade UI
+      return {
+        text: result.content,
+        model: result.modelUsed,
+        downgraded: result.downgraded
+      };
     } else {
-      return await getSimpleAIResponse(prompt);
+      const text = await getSimpleAIResponse(prompt);
+      return {
+        text: text,
+        model: "gemini-3.5-flash",
+        downgraded: false
+      };
     }
   } catch (error: any) {
     console.error("AI Action Error:", error);
     
-    // In dev, provide specific error info. In prod, keep it clean.
     if (isDev) {
-      return `[DEV ERROR] ${model.toUpperCase()} | Status: ${error.status || "FAIL"} | Message: ${error.message || "Unknown error"}`;
+      return {
+        error: true,
+        message: `[DEV ERROR] ${model.toUpperCase()} | Status: ${error.status || "FAIL"} | Message: ${error.message || "Unknown error"}`
+      };
     }
 
-    return "The AI assistant is temporarily unavailable. Please try again in a few moments.";
+    return {
+      error: true,
+      message: "The AI assistant is temporarily unavailable. Please try again in a few moments."
+    };
   }
 }
 
 export async function getAIStatus() {
-  // Only return status in development
   if (process.env.NODE_ENV !== "development") return null;
   return getInternalAIStatus();
 }
