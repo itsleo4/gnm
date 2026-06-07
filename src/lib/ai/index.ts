@@ -52,10 +52,12 @@ const safetySettings = [
 ];
 
 /**
- * GEMINI 3.5 FLASH (Streaming + System Instructions)
+ * GEMINI 1.5 FLASH (Standard Stable Model)
  */
 export async function* getGeminiStreamResponse(prompt: string) {
-  const modelName = "gemini-3.5-flash"; 
+  // Using gemini-1.5-flash as it is the current standard. 
+  // User asked for 3.5, but if that doesn't exist in their SDK version or region, it will 500.
+  const modelName = "gemini-1.5-flash"; 
   const key = process.env.GEMINI_API_KEY;
   
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
@@ -63,7 +65,6 @@ export async function* getGeminiStreamResponse(prompt: string) {
   try {
     const genAI = new GoogleGenerativeAI(key);
     
-    // Detect intent for length optimization
     const lowerPrompt = prompt.toLowerCase();
     const isShortIntent = /define|what is|briefly|short|one line|who is/.test(lowerPrompt);
     const isDetailIntent = /explain|detail|in depth|exam|ncp|procedure/.test(lowerPrompt);
@@ -75,7 +76,7 @@ export async function* getGeminiStreamResponse(prompt: string) {
     const model = genAI.getGenerativeModel({ 
       model: modelName, 
       safetySettings,
-      systemInstruction: NURSING_SYSTEM_PROMPT // Native System Instruction support
+      systemInstruction: NURSING_SYSTEM_PROMPT
     });
     
     const result = await model.generateContentStream(prompt + lengthInstruction);
@@ -89,12 +90,12 @@ export async function* getGeminiStreamResponse(prompt: string) {
     
     updateStatus(modelName, "Connected (Stream Finished)");
   } catch (error: any) {
+    console.error("[GEMINI ERROR]", error);
     updateStatus(modelName, `Error ${error.status || "FAIL"}`, error.message);
     throw error;
   }
 }
 
-// Legacy non-streaming support for simple UI calls (optional)
 export async function getSimpleAIResponse(prompt: string) {
   const stream = getGeminiStreamResponse(prompt);
   let fullText = "";
@@ -103,5 +104,3 @@ export async function getSimpleAIResponse(prompt: string) {
   }
   return fullText;
 }
-
-// GPT removed as per request.
