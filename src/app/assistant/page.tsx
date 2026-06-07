@@ -8,10 +8,6 @@ import {
   Bot, 
   User, 
   Send, 
-  Sparkles, 
-  Stethoscope, 
-  Pill, 
-  FileText, 
   GraduationCap,
   Loader2,
   Paperclip,
@@ -34,10 +30,12 @@ import {
 
 const MODES = [
   { id: "explain", label: "Explain Topic", icon: GraduationCap, color: "bg-primary" },
-  { id: "drug", label: "Drug Info", icon: Pill, color: "bg-tertiary" },
-  { id: "ncp", label: "NCP Help", icon: Stethoscope, color: "bg-secondary" },
+  { id: "drug", label: "Drug Info", icon: Pill, color: "bg-tertiary" }, // Missing Pill? Will fix.
+  { id: "ncp", label: "NCP Help", icon: Stethoscope, color: "bg-secondary" }, // Missing icons?
   { id: "exam", label: "Exam Prep", icon: FileText, color: "bg-error" },
 ];
+
+import { Stethoscope, Pill, FileText } from "lucide-react";
 
 type Message = {
   id: string;
@@ -56,7 +54,6 @@ export default function AssistantPage() {
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 1. Initial Load: Fetch History
   useEffect(() => {
     const loadHistory = async () => {
       const history = await getChatSessions();
@@ -65,14 +62,13 @@ export default function AssistantPage() {
     loadHistory();
   }, []);
 
-  // 2. Load Messages when session changes
   useEffect(() => {
     const loadMessages = async () => {
       if (currentSessionId) {
         const msgs = await getChatMessages(currentSessionId);
         setMessages(msgs.map((m: any) => ({
           id: m.id,
-          role: m.role,
+          role: m.role as "user" | "assistant",
           content: m.content
         })));
       } else {
@@ -92,7 +88,7 @@ export default function AssistantPage() {
     }
   }, [messages, isLoading]);
 
-  const handleNewChat = async () => {
+  const handleNewChat = () => {
     setCurrentSessionId(null);
     setMessages([]);
     setActiveMode(null);
@@ -105,16 +101,18 @@ export default function AssistantPage() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    let sessionId = currentSessionId;
+    let targetSessionId = currentSessionId;
 
-    // 3. Create Session if needed
-    if (!sessionId) {
-      // Temporary placeholder for title, will auto-rename later
+    // 1. Create Session if it doesn't exist
+    if (!targetSessionId) {
       const newSession = await createChatSession(input.slice(0, 30) + "...");
-      sessionId = newSession.id;
-      setCurrentSessionId(sessionId);
+      targetSessionId = newSession.id;
+      setCurrentSessionId(targetSessionId);
       setSessions(prev => [newSession, ...prev]);
     }
+
+    // 2. FORCE TYPE NARROWING (This prevents the 'string | null' build error permanently)
+    const activeId: string = targetSessionId!; 
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -126,9 +124,8 @@ export default function AssistantPage() {
     setInput("");
     setIsLoading(true);
 
-    // 4. Save User Message to Supabase
-    if (!sessionId) return; // TS safety
-    await saveChatMessage(sessionId!, "user", userMessage.content);
+    // 3. Save User Message
+    await saveChatMessage(activeId, "user", userMessage.content);
     
     try {
       const response = await fetch("/api/ai/stream", {
@@ -163,8 +160,8 @@ export default function AssistantPage() {
         });
       }
 
-      // 5. Save Finished AI Message to Supabase
-      await saveChatMessage(sessionId!, "assistant", aiContent);
+      // 4. Save Assistant Message
+      await saveChatMessage(activeId, "assistant", aiContent);
 
     } catch (error: any) {
       const errorMessage: Message = {
