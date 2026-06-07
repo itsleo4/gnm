@@ -6,7 +6,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import { 
   Bot, User, Send, GraduationCap, Loader2, Paperclip, 
-  Menu, Database, AlertCircle, Stethoscope, Pill, FileText
+  Menu, Database, AlertCircle, Stethoscope, Pill, FileText, Zap
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,6 @@ import {
   saveChatMessage, deleteChatSession, renameChatSession, togglePinChat 
 } from "@/app/actions/chat";
 
-// All imports are at top now — this was the production crash cause
 const MODES = [
   { id: "explain", label: "Explain Topic", icon: GraduationCap, color: "bg-primary" },
   { id: "drug", label: "Drug Info", icon: Pill, color: "bg-tertiary" },
@@ -50,7 +49,6 @@ export default function AssistantPage() {
         setSessions(history);
       } catch (err) {
         setDbError(true);
-        console.error("Failed to load history", err);
       }
     };
     loadHistory();
@@ -73,7 +71,7 @@ export default function AssistantPage() {
         setMessages([{
           id: "welcome",
           role: "assistant",
-          content: "Hello! I'm your **GNM Nursing Tutor**. Powered by Gemini 3.5 Flash.\n\nSelect a previous chat or start a new conversation. How can I help you study today?",
+          content: "Hello! I'm your **GNM Nursing Tutor**. Powered by Gemini 1.5 Flash.\n\nSelect a previous chat or start a new conversation. How can I help you study today?",
         }]);
       }
     };
@@ -121,10 +119,9 @@ export default function AssistantPage() {
           targetSessionId = newSession.id;
           setCurrentSessionId(targetSessionId);
           setSessions(prev => [newSession, ...prev]);
-          setDbError(false); // Clear error if creation succeeds
+          setDbError(false);
         } catch (err) {
           setDbError(true);
-          console.error("Create session failed:", err);
         }
       }
 
@@ -176,7 +173,7 @@ export default function AssistantPage() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Error: ${error.message || "Could not connect to AI engine."}`,
+        content: `Error: ${error.message || "Connection failed."}`,
       }]);
     } finally {
       setIsLoading(false);
@@ -227,21 +224,19 @@ export default function AssistantPage() {
           <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl">
             <Menu className="w-5 h-5 text-slate-600" />
           </button>
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-md shadow-primary/10">
-            <Bot className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+            <Zap className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-plus-jakarta font-bold text-xs leading-none">Nursing AI</h1>
-            <p className="text-[9px] font-bold text-primary uppercase tracking-tighter mt-1 truncate max-w-[120px]">
-              {currentSessionId ? sessions.find(s => s.id === currentSessionId)?.title : "New Chat"}
-            </p>
+            <h1 className="font-plus-jakarta font-bold text-sm leading-none">Nursing Tutor</h1>
+            <p className="text-[9px] font-bold text-primary uppercase tracking-tighter mt-1">Gemini 1.5 Flash</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           {dbError && (
             <div className="hidden md:flex items-center gap-1.5 text-error">
               <Database className="w-3.5 h-3.5" />
-              <span className="text-[9px] font-black uppercase">DB Error</span>
+              <span className="text-[9px] font-black uppercase">DB Sync Issue</span>
             </div>
           )}
           <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
@@ -255,16 +250,14 @@ export default function AssistantPage() {
         <div className="container-responsive max-w-2xl space-y-md py-md px-4">
           <AnimatePresence>
             {dbError && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                 className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-4 mb-4"
               >
                 <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-bold text-xs text-amber-700 uppercase tracking-wider">Chat History Sync Issue</h3>
+                  <h3 className="font-bold text-xs text-amber-700 uppercase tracking-wider">Cloud Data Error</h3>
                   <p className="text-[11px] text-amber-600 mt-1 leading-relaxed">
-                    AI is working but history cannot be saved. Ensure your Supabase tables are created and the SQL schema has been run.
+                    AI works, but your history is not being saved locally. Please check your Supabase setup.
                   </p>
                 </div>
               </motion.div>
@@ -276,7 +269,7 @@ export default function AssistantPage() {
               {MODES.map((mode) => (
                 <button
                   key={mode.id}
-                  onClick={() => { setActiveMode(mode.id); setInput(`Educator Mode: ${mode.label}. Please explain...`); }}
+                  onClick={() => { setActiveMode(mode.id); setInput(`Explain this topic: ${mode.label}...`); }}
                   className={cn(
                     "flex flex-col items-center gap-2 p-6 rounded-2xl border border-gray-100 bg-white shadow-sm transition-all active:scale-95 text-center group hover:border-primary/30",
                     activeMode === mode.id && "ring-2 ring-primary border-primary"
@@ -311,8 +304,6 @@ export default function AssistantPage() {
                       p: ({children}) => <p className={msg.role === "user" ? "text-white m-0" : "m-0"}>{children}</p>,
                       h1: ({children}) => <h1 className="text-lg font-bold my-2">{children}</h1>,
                       h2: ({children}) => <h2 className="text-md font-bold my-2">{children}</h2>,
-                      ul: ({children}) => <ul className="list-disc ml-4 my-2">{children}</ul>,
-                      ol: ({children}) => <ol className="list-decimal ml-4 my-2">{children}</ol>,
                     }}>
                       {msg.content}
                     </ReactMarkdown>
