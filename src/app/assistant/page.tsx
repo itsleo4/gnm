@@ -13,6 +13,8 @@ import {
   Paperclip,
   Zap,
   Menu,
+  Database,
+  AlertCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -51,21 +53,30 @@ export default function AssistantPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<string | null>(null);
+  const [dbError, setDbError] = useState<boolean>(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 1. Initial Load: Fetch History
   useEffect(() => {
     const loadHistory = async () => {
       try {
         const history = await getChatSessions();
+        if (history.length === 0) {
+          // Double check if it's an error or just empty
+          // We don't have a direct way to check 'error' here as it's swallowed in action
+          // but we can assume success for now.
+        }
         setSessions(history);
       } catch (err) {
-        console.error("Failed to load history - Database tables might be missing", err);
+        setDbError(true);
+        console.error("Failed to load history", err);
       }
     };
     loadHistory();
   }, []);
 
+  // 2. Load Messages when session changes
   useEffect(() => {
     const loadMessages = async () => {
       if (currentSessionId) {
@@ -83,7 +94,7 @@ export default function AssistantPage() {
         setMessages([{
           id: "welcome",
           role: "assistant",
-          content: "Hello! I'm your **GNM Nursing Tutor**. Powered by Gemini 3.5 Flash.\n\nI can help you with Nursing Care Plans, Anatomy, Physiology, or anything else. How can I help you study today?",
+          content: "Hello! I'm your **GNM Nursing Tutor**. Powered by Gemini 3.5 Flash.\n\nSelect a previous chat or start a new conversation. How can I help you study today?",
         }]);
       }
     };
@@ -100,12 +111,12 @@ export default function AssistantPage() {
     setCurrentSessionId(null);
     setMessages([]);
     setActiveMode(null);
-    setIsSidebarOpen(false); // Close sidebar on new chat
+    setIsSidebarOpen(false);
   };
 
   const handleSelectSession = (id: string) => {
     setCurrentSessionId(id);
-    setIsSidebarOpen(false); // Close sidebar on selection
+    setIsSidebarOpen(false);
   };
 
   const handleSend = async () => {
@@ -118,7 +129,6 @@ export default function AssistantPage() {
       content: userMessageContent,
     };
 
-    // Optimistic UI update
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -126,27 +136,26 @@ export default function AssistantPage() {
     try {
       let targetSessionId = currentSessionId;
 
-      // 1. Create/Ensure Session
+      // Ensure Session Exists
       if (!targetSessionId) {
         try {
           const newSession = await createChatSession(userMessageContent.slice(0, 30) + "...");
           targetSessionId = newSession.id;
           setCurrentSessionId(targetSessionId);
           setSessions(prev => [newSession, ...prev]);
-        } catch (dbError) {
-          console.error("Database error - Ensure you have run the SQL schema in Supabase!", dbError);
-          // Continue anyway but warn the user locally
+        } catch (err) {
+          setDbError(true);
+          console.error("Create session failed - Check Supabase Tables", err);
         }
       }
 
       const activeId: string | null = targetSessionId;
 
-      // 2. Save User Message (Optional/Resilient)
+      // Save User Message
       if (activeId) {
-        saveChatMessage(activeId, "user", userMessageContent).catch(e => console.error("History sync failed", e));
+        saveChatMessage(activeId, "user", userMessageContent).catch(() => setDbError(true));
       }
       
-      // 3. AI Stream Request
       const response = await fetch("/api/ai/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -179,9 +188,9 @@ export default function AssistantPage() {
         });
       }
 
-      // 4. Save Final Message
+      // Save Assistant Message
       if (activeId) {
-        saveChatMessage(activeId, "assistant", aiContent).catch(e => console.error("History sync failed", e));
+        saveChatMessage(activeId, "assistant", aiContent).catch(() => setDbError(true));
       }
 
     } catch (error: any) {
@@ -189,7 +198,7 @@ export default function AssistantPage() {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I'm having trouble connecting to my engine. **Important:** Ensure you have run the [SQL Schema] in Supabase and your API Keys are set in Vercel.",
+        content: "I'm having trouble connecting to my engine. Ensure your API Keys are set in Vercel.",
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -201,9 +210,7 @@ export default function AssistantPage() {
     try {
       await deleteChatSession(id);
       setSessions(prev => prev.filter(s => s.id !== id));
-      if (currentSessionId === id) {
-        setCurrentSessionId(null);
-      }
+      if (currentSessionId === id) setCurrentSessionId(null);
     } catch (err) {
       console.error("Delete failed", err);
     }
@@ -244,12 +251,11 @@ export default function AssistantPage() {
         onTogglePin={handleTogglePin}
       />
 
-      {/* Header */}
       <header className="fixed top-0 w-full h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 flex items-center justify-between px-md lg:pl-[300px]">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors active:scale-95"
+            className="p-2 -ml-2 hover:bg-gray-50 rounded-xl"
           >
             <Menu className="w-5 h-5 text-slate-600" />
           </button>
@@ -264,17 +270,44 @@ export default function AssistantPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
-          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-[9px] font-black text-green-700 tracking-widest uppercase">Live</span>
+        <div className="flex items-center gap-4">
+          {dbError && (
+            <div className="hidden md:flex items-center gap-1.5 text-error">
+              <Database className="w-3.5 h-3.5" />
+              <span className="text-[9px] font-black uppercase">DB Sync Error</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-[9px] font-black text-green-700 tracking-widest uppercase">Live</span>
+          </div>
         </div>
       </header>
       
-      {/* Chat Area */}
       <main className="flex-1 pt-20 pb-44 overflow-y-auto scrollbar-hide lg:ml-[280px]" ref={scrollRef}>
         <div className="container-responsive max-w-2xl space-y-md py-md px-4">
 
-          {/* Modes Grid */}
+          {/* Database Setup Warning */}
+          <AnimatePresence>
+            {dbError && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-error/5 border border-error/20 rounded-2xl p-4 flex items-start gap-4 mb-6"
+              >
+                <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error shrink-0">
+                  <AlertCircle className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-xs text-error uppercase tracking-wider">Supabase Tables Missing</h3>
+                  <p className="text-[11px] text-error/80 leading-relaxed font-medium">
+                    Chat history is not being saved. Please copy the code from **supabase_schema.sql** in your project and run it in the **Supabase SQL Editor**.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {messages.length <= 1 && (
             <motion.section 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -302,7 +335,6 @@ export default function AssistantPage() {
             </motion.section>
           )}
 
-          {/* Messages */}
           <div className="space-y-6">
             {messages.map((msg) => (
               <motion.div
@@ -356,7 +388,6 @@ export default function AssistantPage() {
         </div>
       </main>
 
-      {/* Input Container */}
       <footer className="fixed bottom-24 w-full px-4 pb-4 lg:pl-[300px]">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 flex items-center gap-2">
