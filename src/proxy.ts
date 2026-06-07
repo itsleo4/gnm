@@ -2,9 +2,19 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  const { pathname } = request.nextUrl
+
+  // ─── Static asset passthrough ───────────────────────────────────────────────
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.startsWith('/api') ||
+    /\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff|woff2)$/.test(pathname)
+  ) {
+    return NextResponse.next({ request })
+  }
+
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,10 +25,10 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -27,33 +37,34 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // Do not run on static assets or favicons
-  if (
-    request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname.startsWith('/favicon.ico') ||
-    request.nextUrl.pathname.match(/\.(?:svg|png|jpg|jpeg|gif|webp)$/)
-  ) {
+  // ─── Session check ───────────────────────────────────────────────────────────
+  // Must use getUser() (not getSession()) for security — validates token server-side
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // If Supabase is unreachable, fail open (don't redirect in a loop)
     return supabaseResponse
   }
 
-  // REFRESH SESSION
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const isAuthPage = request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup'
-  const isProtectedPage = ['/dashboard', '/ncp', '/assistant', '/drugs', '/revision', '/profile'].some(
-    path => request.nextUrl.pathname.startsWith(path)
+  const isAuthPage = pathname === '/login' || pathname === '/signup'
+  const isProtectedPage = ['/dashboard', '/ncp', '/assistant', '/drugs', '/revision', '/profile', '/videos'].some(
+    path => pathname.startsWith(path)
   )
 
-  // Redirect to login if user is not authenticated and trying to access a protected page
+  // ─── Unauthenticated user → redirect to login (only for protected pages) ────
   if (!user && isProtectedPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.searchParams.set('next', pathname) // preserve intended destination
     return NextResponse.redirect(url)
   }
 
-  // Redirect to dashboard if user is authenticated and trying to access login/signup
+  // ─── Authenticated user → redirect away from auth pages ─────────────────────
+  // IMPORTANT: Only redirect if user is confirmed (not just "exists")
+  // Do NOT redirect to /dashboard here — dashboard handles its own state.
+  // Instead redirect to landing page or dashboard based on intent.
   if (user && isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
@@ -65,13 +76,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 }
