@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GNM Companion - Dashboard</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-container": "#996100",
+                      "on-error": "#ffffff",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "inverse-on-surface": "#eef0ff",
+                      "background": "#faf8ff",
+                      "surface-dim": "#d2d9f4",
+                      "primary-fixed": "#dbe1ff",
+                      "secondary-fixed-dim": "#4fdbc8",
+                      "on-background": "#131b2e",
+                      "secondary-fixed": "#71f8e4",
+                      "on-error-container": "#93000a",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#dae2fd",
+                      "secondary": "#006b5f",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "tertiary": "#784b00",
+                      "surface-container-lowest": "#ffffff",
+                      "outline": "#737686",
+                      "primary-container": "#2563eb",
+                      "on-primary-container": "#eeefff",
+                      "inverse-primary": "#b4c5ff",
+                      "surface-variant": "#dae2fd",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-container": "#ffeedd",
+                      "primary": "#004ac6",
+                      "on-primary": "#ffffff",
+                      "surface": "#faf8ff",
+                      "on-secondary": "#ffffff",
+                      "surface-tint": "#0053db",
+                      "surface-container-high": "#e2e7ff",
+                      "tertiary-fixed": "#ffddb8",
+                      "on-tertiary-fixed": "#2a1700",
+                      "on-secondary-container": "#006f64",
+                      "on-surface": "#131b2e",
+                      "on-primary-fixed": "#00174b",
+                      "outline-variant": "#c3c6d7",
+                      "surface-container-low": "#f2f3ff",
+                      "on-surface-variant": "#434655",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "on-secondary-fixed-variant": "#005048",
+                      "secondary-container": "#6df5e1",
+                      "inverse-surface": "#283044",
+                      "surface-container": "#eaedff",
+                      "on-secondary-fixed": "#00201c",
+                      "surface-bright": "#faf8ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "md": "16px",
+                      "xl": "48px",
+                      "unit": "4px",
+                      "sm": "8px",
+                      "container-margin": "32px",
+                      "gutter": "24px",
+                      "xs": "4px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "label-md": ["Inter"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "body-lg": ["Inter"],
+                      "caption": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-lg": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                      "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "caption": ["12px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                      "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                      "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-hero {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(0, 74, 198, 0.8));
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .academic-card {
+            box-shadow: 0px 4px 20px rgba(15, 23, 42, 0.05);
+            border: 1px solid #E2E8F0;
+        }
+        body {
+            background-color: #faf8ff;
+            -webkit-tap-highlight-color: transparent;
+        }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-surface antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl shadow-sm flex justify-between items-center px-md py-sm">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container overflow-hidden academic-card">
+<img class="w-full h-full object-cover" data-alt="A professional and friendly portrait of a young female nursing student wearing clean blue scrubs in a modern medical educational setting. The lighting is soft and natural, reflecting a bright, clinical but warm environment. She is smiling confidently, symbolizing academic success and empathy in healthcare training." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAd-5IRKUrV6VmzRvnM2TNIneJcovOAKcqLdXYwOPrlK1sxa-Zi-jUXIHnx68Epzr0RenCOpY_uddmjFNzdjkA7fnMA2aVuygAsQwspzqYy_D5gxMpoQ14kFuFngDga36btCE2IHxaYz-cNgS0lhLKWXS_NgewD3Qev1aFdOPBcSSjAaE0hpDZjzR87oVF8Qxj5eBlO02C2M5VA6b6BoLyNqCr_-S0QKqIvW9-eF_H16GVNIuA67ixxkLiuJfXWiKK2fAe0WL0H1Q"/>
+</div>
+<span class="font-headline-md text-headline-md-mobile font-bold text-primary">GNM Companion</span>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-low transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+</header>
+<main class="pt-24 pb-32 px-md space-y-lg">
+<!-- Hero Section: Glassmorphic Learning Goal -->
+<section class="glass-hero rounded-xl p-lg text-on-primary relative overflow-hidden academic-card">
+<!-- Decorative circle -->
+<div class="absolute -right-10 -top-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-md">
+<div>
+<p class="font-label-md text-caption opacity-90 uppercase tracking-wider mb-1">Current Learning Goal</p>
+<h2 class="font-headline-md text-headline-md-mobile leading-tight">Advanced Maternal-Newborn Nursing</h2>
+</div>
+<div class="bg-white/20 backdrop-blur-md rounded-lg px-3 py-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<span class="font-label-md text-caption">12 Days</span>
+</div>
+</div>
+<div class="mt-lg">
+<div class="flex justify-between text-caption font-label-md mb-2">
+<span>Weekly Progress</span>
+<span>68%</span>
+</div>
+<div class="w-full bg-white/20 rounded-full h-2">
+<div class="bg-secondary-fixed h-2 rounded-full transition-all duration-1000" style="width: 68%;"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Stats Grid (Bento Style) -->
+<div class="grid grid-cols-2 gap-md">
+<!-- Study Progress (Circular) -->
+<div class="col-span-1 bg-white p-md rounded-xl academic-card flex flex-col items-center justify-center text-center">
+<div class="relative w-20 h-20 mb-sm">
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-surface-container-highest" cx="40" cy="40" fill="transparent" r="34" stroke="currentColor" stroke-width="6"></circle>
+<circle cx="40" cy="40" fill="transparent" r="34" stroke="#14B8A6" stroke-dasharray="213.6" stroke-dashoffset="53.4" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="font-label-md text-primary font-bold">75%</span>
+</div>
+</div>
+<p class="font-label-md text-caption text-on-surface-variant">Syllabus Covered</p>
+</div>
+<!-- Flashcard Stats -->
+<div class="col-span-1 bg-white p-md rounded-xl academic-card flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">quiz</span>
+<span class="text-caption font-label-md text-secondary">+12 today</span>
+</div>
+<div>
+<h4 class="font-headline-md text-primary font-bold">248</h4>
+<p class="font-label-md text-caption text-on-surface-variant">Mastered Cards</p>
+</div>
+</div>
+<!-- Recent Notes (List View) -->
+<div class="col-span-2 bg-white p-md rounded-xl academic-card">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-label-md text-on-surface">Recent Notes</h3>
+<button class="text-primary font-label-md text-caption">View All</button>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center gap-md p-sm hover:bg-surface-container-low rounded-lg transition-colors border border-transparent hover:border-outline-variant">
+<div class="w-10 h-10 rounded bg-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-fixed">description</span>
+</div>
+<div class="flex-1">
+<p class="font-label-md text-on-surface truncate">Pharmacology: Beta Blockers</p>
+<p class="text-caption text-on-surface-variant">Edited 2h ago</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+</div>
+<div class="flex items-center gap-md p-sm hover:bg-surface-container-low rounded-lg transition-colors border border-transparent hover:border-outline-variant">
+<div class="w-10 h-10 rounded bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-fixed">description</span>
+</div>
+<div class="flex-1">
+<p class="font-label-md text-on-surface truncate">NCP for Type 2 Diabetes</p>
+<p class="text-caption text-on-surface-variant">Edited Yesterday</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Upcoming Exams (Date Focus) -->
+<div class="col-span-2 bg-white p-md rounded-xl academic-card">
+<h3 class="font-label-md text-on-surface mb-md">Upcoming Exams</h3>
+<div class="flex gap-md overflow-x-auto pb-2 scrollbar-hide">
+<div class="min-w-[140px] bg-surface-container-low p-md rounded-xl border-l-4 border-error">
+<p class="text-caption font-bold text-error mb-1">Oct 24</p>
+<p class="font-label-md text-on-surface leading-tight">Anatomy Final</p>
+<p class="text-caption text-on-surface-variant mt-2">In 3 days</p>
+</div>
+<div class="min-w-[140px] bg-surface-container-low p-md rounded-xl border-l-4 border-primary">
+<p class="text-caption font-bold text-primary mb-1">Nov 02</p>
+<p class="font-label-md text-on-surface leading-tight">Microbiology</p>
+<p class="text-caption text-on-surface-variant mt-2">In 12 days</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Revision Hub -->
+<section class="space-y-sm">
+<h3 class="font-label-md text-on-surface px-xs">Quick Revision Hub</h3>
+<div class="grid grid-cols-2 gap-sm">
+<button class="bg-surface-container flex items-center gap-sm p-md rounded-xl active:scale-95 transition-transform text-left">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<span class="font-label-md text-on-surface">Daily Quiz</span>
+</button>
+<button class="bg-surface-container flex items-center gap-sm p-md rounded-xl active:scale-95 transition-transform text-left">
+<span class="material-symbols-outlined text-secondary">clinical_notes</span>
+<span class="font-label-md text-on-surface">Case Studies</span>
+</button>
+</div>
+</section>
+<!-- Case Study Block (Specialty Component) -->
+<section class="bg-white rounded-xl academic-card p-md border-l-4 border-[#14B8A6]">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-secondary text-sm">history_edu</span>
+<span class="text-caption font-label-md text-secondary uppercase tracking-tight">Today's Case Study</span>
+</div>
+<h4 class="font-headline-md text-on-surface mb-2">Post-Op Appendectomy</h4>
+<p class="text-body-md text-on-surface-variant line-clamp-2">Patient presents with localized pain at the incision site, low-grade fever, and mild nausea...</p>
+<button class="mt-md w-full bg-primary-container text-on-primary-container py-sm rounded-lg font-label-md active:scale-95 transition-transform">Solve Now</button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface dark:bg-surface-dim shadow-[0_-4px_20px_rgba(15,23,42,0.05)] flex justify-around items-center px-4 py-3 pb-6">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-md text-caption">Home</span>
+</a>
+<!-- Meds -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">medical_services</span>
+<span class="font-label-md text-caption">Meds</span>
+</a>
+<!-- Care Plan -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">assignment_turned_in</span>
+<span class="font-label-md text-caption">Care Plan</span>
+</a>
+<!-- AI Tutor -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span class="font-label-md text-caption">AI Tutor</span>
+</a>
+</nav>
+<!-- FAB Suppression: On Dashboard we include it for 'Quick Note' as it aligns with primary purpose -->
+<button class="fixed right-6 bottom-28 w-14 h-14 bg-primary rounded-2xl shadow-xl flex items-center justify-center text-on-primary active:scale-90 transition-transform z-40">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+<script>
+        // Micro-interaction for circular progress animation
+        window.addEventListener('DOMContentLoaded', () => {
+            const circle = document.querySelector('circle[stroke="#14B8A6"]');
+            if (circle) {
+                circle.style.transition = 'stroke-dashoffset 1.5s ease-out';
+            }
+        });
+    </script>
+</body></html>
