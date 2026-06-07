@@ -54,8 +54,8 @@ export default function NCPPage() {
     Provide subjective data, objective data, and 3 interventions.`;
 
     try {
-      const response = await askAI(prompt, "openai"); // Use OpenAI for complex medical logic
-      setAiReport(response);
+      const response = await askAI(prompt); // Use the unified Gemini engine
+      setAiReport(response.text);
       setIsGenerated(true);
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     } catch (error) {

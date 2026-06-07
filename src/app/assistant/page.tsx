@@ -15,12 +15,11 @@ import {
   Loader2,
   Paperclip,
   Zap,
-  Info,
-  AlertTriangle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { askAI } from "@/app/actions/ai";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const MODES = [
   { id: "explain", label: "Explain Topic", icon: GraduationCap, color: "bg-primary" },
@@ -33,8 +32,6 @@ type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  sourceModel?: string;
-  isDowngraded?: boolean;
 };
 
 export default function AssistantPage() {
@@ -42,14 +39,12 @@ export default function AssistantPage() {
     {
       id: "1",
       role: "assistant",
-      content: "Hello! I'm your GNM AI Nursing Tutor. I'm powered by Gemini 3.5 and GPT-5.5. How can I help you today?",
+      content: "Hello! I'm your **GNM Nursing Tutor**. Powered by Gemini 3.5 Flash.\n\nI can help you with Nursing Care Plans, Anatomy, Physiology, or anything else. How can I help you study today?",
     }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<string | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<"gemini" | "openai">("gemini");
-  const [showLimitNotice, setShowLimitNotice] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -71,34 +66,47 @@ export default function AssistantPage() {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
-    setShowLimitNotice(false);
     
     try {
-      const response = await askAI(input, selectedProvider);
+      const response = await fetch("/api/ai/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: input }),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch stream");
+
+      const reader = response.body?.getReader();
+      const decoder = new TextEncoder().encode(""); // Not used, placeholder
+      const textDecoder = new TextDecoder();
       
-      if (response.error === true) {
-        throw new Error(response.message);
+      let aiContent = "";
+      const aiMessageId = (Date.now() + 1).toString();
+      
+      // Initialize empty AI message
+      setMessages(prev => [...prev, { id: aiMessageId, role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader!.read();
+        if (done) break;
+        
+        const chunk = textDecoder.decode(value);
+        aiContent += chunk;
+        
+        // Update the last message in state with the cumulative content
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last.id === aiMessageId) {
+            return [...prev.slice(0, -1), { ...last, content: aiContent }];
+          }
+          return prev;
+        });
       }
-
-      // Now TS knows response.error is false, so text/model/downgraded exist
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response.text as string,
-        sourceModel: response.model as string,
-        isDowngraded: response.downgraded as boolean,
-      };
-
-      if (response.downgraded) {
-        setShowLimitNotice(true);
-      }
-
-      setMessages(prev => [...prev, aiMessage]);
     } catch (error: any) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: error.message || "I encountered an error. Please check your keys or connection.",
+        content: "I encountered an error. Please try again later.",
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -108,63 +116,27 @@ export default function AssistantPage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col h-screen overflow-hidden">
-      {/* Custom Top Header with Provider Toggle */}
-      <header className="fixed top-0 w-full h-20 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 flex items-center justify-between px-md">
+      {/* Refined Header */}
+      <header className="fixed top-0 w-full h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 flex items-center justify-between px-md">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
-            <Zap className="w-6 h-6" />
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+            <Zap className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-plus-jakarta font-bold text-lg leading-none">AI Tutor</h1>
-            <p className="text-[10px] font-bold text-primary uppercase tracking-tighter mt-1">Frontier Intelligence</p>
+            <h1 className="font-plus-jakarta font-bold text-sm leading-none">Nursing AI Tutor</h1>
+            <p className="text-[9px] font-bold text-primary uppercase tracking-tighter mt-1">Gemini 3.5 Flash</p>
           </div>
         </div>
 
-        {/* TOP RIGHT PROVIDER SELECTOR */}
-        <div className="bg-gray-100/80 p-1 rounded-xl flex items-center gap-1 border border-gray-200">
-          <button 
-            onClick={() => setSelectedProvider("gemini")}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-2",
-              selectedProvider === "gemini" ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:bg-white/50"
-            )}
-          >
-            <Sparkles className="w-3 h-3" />
-            GEMINI
-          </button>
-          <button 
-            onClick={() => setSelectedProvider("openai")}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-2",
-              selectedProvider === "openai" ? "bg-black text-white shadow-sm" : "text-gray-500 hover:bg-white/50"
-            )}
-          >
-            <Bot className="w-3 h-3" />
-            GPT-5.5
-          </button>
+        <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-[9px] font-black text-green-700 tracking-widest uppercase">Live Engine</span>
         </div>
       </header>
       
       {/* Chat Area */}
-      <main className="flex-1 pt-24 pb-48 overflow-y-auto scrollbar-hide" ref={scrollRef}>
+      <main className="flex-1 pt-20 pb-44 overflow-y-auto scrollbar-hide" ref={scrollRef}>
         <div className="container-responsive max-w-2xl space-y-md py-md px-4">
-          
-          {/* Quick Info & Notice */}
-          <AnimatePresence>
-            {showLimitNotice && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3 mb-4"
-              >
-                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-                <p className="text-[11px] font-bold text-amber-700 leading-tight">
-                  GPT-5.5 Instant limit reached. Automatically shifted to <span className="underline">GPT-5.5 Mini</span> for uninterrupted high-volume study.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           {/* Modes Grid */}
           {messages.length <= 1 && (
@@ -178,17 +150,17 @@ export default function AssistantPage() {
                   key={mode.id}
                   onClick={() => {
                     setActiveMode(mode.id);
-                    setInput(`GNM Tutor: ${mode.label} for...`);
+                    setInput(`Educator Mode: ${mode.label}. Please provide a detailed overview of...`);
                   }}
                   className={cn(
                     "flex flex-col items-center gap-2 p-6 rounded-2xl border border-gray-100 bg-white shadow-sm transition-all active:scale-95 text-center group hover:border-primary/30",
                     activeMode === mode.id && "ring-2 ring-primary border-primary"
                   )}
                 >
-                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110", mode.color)}>
-                    <mode.icon className="w-6 h-6" />
+                  <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110", mode.color)}>
+                    <mode.icon className="w-5 h-5" />
                   </div>
-                  <span className="font-bold text-xs text-slate-700">{mode.label}</span>
+                  <span className="font-bold text-[11px] text-slate-700">{mode.label}</span>
                 </button>
               ))}
             </motion.section>
@@ -210,38 +182,39 @@ export default function AssistantPage() {
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm font-bold text-[10px]",
                   msg.role === "user" ? "bg-primary text-white" : "bg-white text-primary border border-gray-100"
                 )}>
-                  {msg.role === "user" ? "U" : "AI"}
+                  {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
                 <div className="flex flex-col gap-1 max-w-[85%]">
-                  {msg.role === "assistant" && msg.sourceModel && (
-                    <div className="flex items-center gap-2 px-1">
-                      <span className={cn(
-                        "text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded",
-                        msg.isDowngraded ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"
-                      )}>
-                        {msg.sourceModel}
-                      </span>
-                      {msg.isDowngraded && <Info className="w-3 h-3 text-amber-500" />}
-                    </div>
-                  )}
                   <div className={cn(
-                    "p-4 rounded-2xl shadow-sm text-sm leading-relaxed",
+                    "p-4 rounded-2xl shadow-sm text-sm leading-relaxed prose prose-sm max-w-none",
                     msg.role === "user" 
                       ? "bg-primary text-white rounded-tr-sm" 
                       : "bg-white text-slate-800 rounded-tl-sm border border-gray-100"
                   )}>
-                    {msg.content}
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        // Ensure markdown inherits white text color when user is speaking
+                        p: ({children}) => <p className={msg.role === "user" ? "text-white prose-invert m-0" : "m-0"}>{children}</p>,
+                        h1: ({children}) => <h1 className="text-lg font-bold my-2">{children}</h1>,
+                        h2: ({children}) => <h2 className="text-md font-bold my-2">{children}</h2>,
+                        ul: ({children}) => <ul className="list-disc ml-4 my-2">{children}</ul>,
+                        ol: ({children}) => <ol className="list-decimal ml-4 my-2">{children}</ol>,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </motion.div>
             ))}
 
-            {isLoading && (
+            {isLoading && !messages[messages.length-1].content && (
               <div className="flex gap-3 items-center">
                 <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center shadow-sm">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
                 </div>
-                <p className="text-[10px] font-bold text-gray-400">AI remains thinking...</p>
+                <p className="text-[10px] font-bold text-gray-400">Educator is preparing response...</p>
               </div>
             )}
           </div>
@@ -252,24 +225,24 @@ export default function AssistantPage() {
       <footer className="fixed bottom-24 w-full px-4 pb-4">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 flex items-center gap-2">
-            <button className="w-10 h-10 rounded-xl hover:bg-gray-50 flex items-center justify-center text-gray-400">
+            <button className="w-10 h-10 rounded-xl hover:bg-gray-50 flex items-center justify-center text-gray-400 focus:outline-none">
               <Paperclip className="w-5 h-5" />
             </button>
             <input 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder={`Ask ${selectedProvider === "gemini" ? "Gemini 3.5" : "GPT-5.5"} anything...`}
+              placeholder="Ask anything about GNM Nursing..."
               className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium h-12"
             />
             <button 
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
               className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95",
+                "w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-md",
                 input.trim() 
-                  ? selectedProvider === "openai" ? "bg-black text-white shadow-lg" : "bg-primary text-white shadow-lg"
-                  : "bg-gray-100 text-gray-300"
+                  ? "bg-primary text-white shadow-primary/20"
+                  : "bg-gray-100 text-gray-300 shadow-none cursor-not-allowed"
               )}
             >
               <Send className="w-5 h-5" />

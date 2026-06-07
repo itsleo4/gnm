@@ -41,7 +41,7 @@ export default function AIDebugPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Activity className="w-6 h-6 text-primary" />
-            AI Diagnostics
+            Gemini Diagnostics
           </h1>
           <button 
             onClick={fetchStatus}
@@ -55,18 +55,13 @@ export default function AIDebugPage() {
           {/* Environment Status */}
           <section className="bg-white p-lg rounded-2xl shadow-sm border border-outline-variant/30 space-y-md">
             <h2 className="text-sm font-bold uppercase tracking-widest text-outline flex items-center gap-2">
-              <Database className="w-4 h-4" /> Environment Keys
+              <Database className="w-4 h-4" /> Provider Health
             </h2>
             <div className="space-y-sm">
               <StatusRow 
                 label="GEMINI_API_KEY" 
                 active={status?.geminiKeyDetected} 
-                value={status?.geminiKeyDetected ? "DETECTED" : "MISSING"} 
-              />
-              <StatusRow 
-                label="OPENAI_API_KEY" 
-                active={status?.openaiKeyDetected} 
-                value={status?.openaiKeyDetected ? "DETECTED" : "MISSING"} 
+                value={status?.geminiKeyDetected ? "HEALTHY" : "MISSING"} 
               />
             </div>
           </section>
@@ -74,25 +69,21 @@ export default function AIDebugPage() {
           {/* Last Transaction */}
           <section className="bg-white p-lg rounded-2xl shadow-sm border border-outline-variant/30 space-y-md">
             <h2 className="text-sm font-bold uppercase tracking-widest text-outline flex items-center gap-2">
-              <Cpu className="w-4 h-4" /> Last Transaction
+              <Cpu className="w-4 h-4" /> System Stats
             </h2>
             <div className="space-y-sm text-sm">
               <div className="flex justify-between">
-                <span className="font-medium text-on-surface-variant">Provider:</span>
-                <span className="font-bold text-primary">{status?.provider || "None"}</span>
+                <span className="font-medium text-on-surface-variant">Active Model:</span>
+                <span className="font-bold text-primary">{status?.model || "Gemini 3.5 Flash"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-medium text-on-surface-variant">Model:</span>
-                <span className="font-mono text-xs">{status?.model || "N/A"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-on-surface-variant">Status:</span>
-                <span className={`font-bold ${status?.lastStatus === 'Connected' ? 'text-secondary' : 'text-error'}`}>
-                  {status?.lastStatus || "No requests yet"}
+                <span className="font-medium text-on-surface-variant">Last Status:</span>
+                <span className={`font-bold ${status?.lastStatus?.includes('Connected') || status?.lastStatus?.includes('Started') ? 'text-secondary' : 'text-error'}`}>
+                  {status?.lastStatus || "Awaiting request"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="font-medium text-on-surface-variant">Time:</span>
+                <span className="font-medium text-on-surface-variant">Server Time:</span>
                 <span className="opacity-70">{status?.timestamp ? new Date(status.timestamp).toLocaleTimeString() : "-"}</span>
               </div>
             </div>
@@ -103,7 +94,7 @@ export default function AIDebugPage() {
         {status?.lastError && (
           <section className="bg-error/5 border border-error/20 p-lg rounded-2xl space-y-sm">
             <h3 className="font-bold text-error flex items-center gap-2 text-sm uppercase tracking-wider">
-              Raw Error Message
+              Diagnostic Logs
             </h3>
             <pre className="bg-white/50 p-md rounded-lg text-[11px] font-mono whitespace-pre-wrap break-all text-error/80 overflow-x-auto">
               {status.lastError}
@@ -111,9 +102,12 @@ export default function AIDebugPage() {
           </section>
         )}
 
-        <p className="text-[10px] text-center text-on-surface-variant italic">
-          Auto-refreshing every 5 seconds. Use this page to verify your API keys and model access.
-        </p>
+        <div className="bg-primary/5 p-lg rounded-2xl border border-primary/20">
+          <h4 className="text-xs font-bold text-primary uppercase tracking-widest mb-2">Technical Note</h4>
+          <p className="text-[11px] leading-relaxed text-primary/80 font-medium">
+            OpenAI (GPT) has been completely removed from this project. The system is now fully optimized for the Gemini 3.5 Flash architecture, utilizing native system instructions and streaming data pipes.
+          </p>
+        </div>
       </main>
     </div>
   );
