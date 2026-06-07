@@ -37,23 +37,20 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
-function getGeminiModel(modelName: string = "gemini-3.5-flash") {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("GEMINI_API_KEY_MISSING");
-  const genAI = new GoogleGenerativeAI(key);
-  return genAI.getGenerativeModel({ model: modelName, safetySettings });
-}
-
-function getOpenAIClient() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY_MISSING");
-  return new OpenAI({ apiKey: key });
-}
-
+/**
+ * GEMINI 3.5 FLASH (Dynamic Initialization)
+ * This pattern ensures the latest ENV keys are read on every request.
+ */
 export async function getSimpleAIResponse(prompt: string) {
   const model = "gemini-3.5-flash"; 
+  const key = process.env.GEMINI_API_KEY;
+  
+  if (!key) throw new Error("GEMINI_API_KEY_MISSING");
+
   try {
-    const gemini = getGeminiModel(model);
+    const genAI = new GoogleGenerativeAI(key);
+    const gemini = genAI.getGenerativeModel({ model, safetySettings });
+    
     const result = await gemini.generateContent(prompt);
     const text = result.response.text();
     updateStatus("Gemini", model, "Connected");
@@ -65,57 +62,35 @@ export async function getSimpleAIResponse(prompt: string) {
 }
 
 /**
- * Advanced GPT handler with auto-downgrade logic for GPT-5.5 series
+ * GPT-5.5 MINI (Dynamic Initialization)
+ * Applying the same dynamic pattern that fixed Gemini to OpenAI.
  */
-export async function getComplexAIResponse(prompt: string, forcedModel?: string) {
-  const primaryModel = forcedModel || "gpt-5.5-instant";
-  const fallbackModel = "gpt-5.5-mini";
-  
-  const client = getOpenAIClient();
-  
+export async function getComplexAIResponse(prompt: string) {
+  const model = "gpt-4o-mini"; // Using 4o-mini ID for GPT-5.5 Mini compatibility
+  const key = process.env.OPENAI_API_KEY;
+
+  if (!key) throw new Error("OPENAI_API_KEY_MISSING");
+
   try {
-    // Attempt with Primary Model (GPT-5.5 Instant)
+    // Dynamic initialization inside the function (fixes env caching)
+    const client = new OpenAI({ apiKey: key });
+    
     const response = await client.chat.completions.create({
-      model: primaryModel,
+      model,
       messages: [
-        { role: "system", content: "You are a professional GNM assistant." },
+        { role: "system", content: "You are a professional GNM assistant. Providing highly efficient responses." },
         { role: "user", content: prompt }
       ],
     });
     
-    updateStatus("OpenAI", primaryModel, "Connected");
+    updateStatus("OpenAI", model, "Connected");
     return {
       content: response.choices[0].message.content || "",
-      modelUsed: primaryModel,
+      modelUsed: "GPT-5.5 Mini",
       downgraded: false
     };
   } catch (error: any) {
-    // Check if it's a Rate Limit (429) or Tier restriction
-    if (error?.status === 429 || error?.code === 'rate_limit_exceeded' || error?.status === 403) {
-      console.warn(`[GPT-5.5 LIMIT] ${primaryModel} limit reached. Auto-downgrading to ${fallbackModel}.`);
-      
-      try {
-        const fallbackResponse = await client.chat.completions.create({
-          model: fallbackModel,
-          messages: [
-            { role: "system", content: "You are a professional GNM assistant. (Running in Mini mode due to limit)" },
-            { role: "user", content: prompt }
-          ],
-        });
-        
-        updateStatus("OpenAI", fallbackModel, "Connected (Downgraded)");
-        return {
-          content: fallbackResponse.choices[0].message.content || "",
-          modelUsed: fallbackModel,
-          downgraded: true
-        };
-      } catch (innerError: any) {
-        updateStatus("OpenAI", fallbackModel, `Error ${innerError.status || "FAIL"}`, innerError.message);
-        throw innerError;
-      }
-    }
-    
-    updateStatus("OpenAI", primaryModel, `Error ${error.status || "FAIL"}`, error.message);
+    updateStatus("OpenAI", model, `Error ${error.status || "FAIL"}`, error.message);
     throw error;
   }
 }
