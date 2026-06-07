@@ -30,8 +30,8 @@ import {
 
 const MODES = [
   { id: "explain", label: "Explain Topic", icon: GraduationCap, color: "bg-primary" },
-  { id: "drug", label: "Drug Info", icon: Pill, color: "bg-tertiary" }, // Missing Pill? Will fix.
-  { id: "ncp", label: "NCP Help", icon: Stethoscope, color: "bg-secondary" }, // Missing icons?
+  { id: "drug", label: "Drug Info", icon: Pill, color: "bg-tertiary" },
+  { id: "ncp", label: "NCP Help", icon: Stethoscope, color: "bg-secondary" },
   { id: "exam", label: "Exam Prep", icon: FileText, color: "bg-error" },
 ];
 
@@ -56,8 +56,12 @@ export default function AssistantPage() {
 
   useEffect(() => {
     const loadHistory = async () => {
-      const history = await getChatSessions();
-      setSessions(history);
+      try {
+        const history = await getChatSessions();
+        setSessions(history);
+      } catch (err) {
+        console.error("Failed to load history - Database tables might be missing", err);
+      }
     };
     loadHistory();
   }, []);
@@ -65,17 +69,21 @@ export default function AssistantPage() {
   useEffect(() => {
     const loadMessages = async () => {
       if (currentSessionId) {
-        const msgs = await getChatMessages(currentSessionId);
-        setMessages(msgs.map((m: any) => ({
-          id: m.id,
-          role: m.role as "user" | "assistant",
-          content: m.content
-        })));
+        try {
+          const msgs = await getChatMessages(currentSessionId);
+          setMessages(msgs.map((m: any) => ({
+            id: m.id,
+            role: m.role as "user" | "assistant",
+            content: m.content
+          })));
+        } catch (err) {
+          console.error("Failed to load messages", err);
+        }
       } else {
         setMessages([{
           id: "welcome",
           role: "assistant",
-          content: "Hello! I'm your **GNM Nursing Tutor**. Powered by Gemini 3.5 Flash.\n\nSelect a previous chat or start a new conversation. How can I help you study today?",
+          content: "Hello! I'm your **GNM Nursing Tutor**. Powered by Gemini 3.5 Flash.\n\nI can help you with Nursing Care Plans, Anatomy, Physiology, or anything else. How can I help you study today?",
         }]);
       }
     };
@@ -92,46 +100,57 @@ export default function AssistantPage() {
     setCurrentSessionId(null);
     setMessages([]);
     setActiveMode(null);
+    setIsSidebarOpen(false); // Close sidebar on new chat
   };
 
   const handleSelectSession = (id: string) => {
     setCurrentSessionId(id);
+    setIsSidebarOpen(false); // Close sidebar on selection
   };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    let targetSessionId = currentSessionId;
-
-    // 1. Create Session if it doesn't exist
-    if (!targetSessionId) {
-      const newSession = await createChatSession(input.slice(0, 30) + "...");
-      targetSessionId = newSession.id;
-      setCurrentSessionId(targetSessionId);
-      setSessions(prev => [newSession, ...prev]);
-    }
-
-    // 2. FORCE TYPE NARROWING (This prevents the 'string | null' build error permanently)
-    const activeId: string = targetSessionId!; 
-
+    const userMessageContent = input;
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: userMessageContent,
     };
 
+    // Optimistic UI update
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
-    // 3. Save User Message
-    await saveChatMessage(activeId, "user", userMessage.content);
-    
     try {
+      let targetSessionId = currentSessionId;
+
+      // 1. Create/Ensure Session
+      if (!targetSessionId) {
+        try {
+          const newSession = await createChatSession(userMessageContent.slice(0, 30) + "...");
+          targetSessionId = newSession.id;
+          setCurrentSessionId(targetSessionId);
+          setSessions(prev => [newSession, ...prev]);
+        } catch (dbError) {
+          console.error("Database error - Ensure you have run the SQL schema in Supabase!", dbError);
+          // Continue anyway but warn the user locally
+        }
+      }
+
+      const activeId: string | null = targetSessionId;
+
+      // 2. Save User Message (Optional/Resilient)
+      if (activeId) {
+        saveChatMessage(activeId, "user", userMessageContent).catch(e => console.error("History sync failed", e));
+      }
+      
+      // 3. AI Stream Request
       const response = await fetch("/api/ai/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: input }),
+        body: JSON.stringify({ prompt: userMessageContent }),
       });
 
       if (!response.ok) throw new Error("Failed to fetch stream");
@@ -160,14 +179,17 @@ export default function AssistantPage() {
         });
       }
 
-      // 4. Save Assistant Message
-      await saveChatMessage(activeId, "assistant", aiContent);
+      // 4. Save Final Message
+      if (activeId) {
+        saveChatMessage(activeId, "assistant", aiContent).catch(e => console.error("History sync failed", e));
+      }
 
     } catch (error: any) {
+      console.error("AI Error:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I encountered an error. Please try again later.",
+        content: "I'm having trouble connecting to my engine. **Important:** Ensure you have run the [SQL Schema] in Supabase and your API Keys are set in Vercel.",
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -176,24 +198,36 @@ export default function AssistantPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteChatSession(id);
-    setSessions(prev => prev.filter(s => s.id !== id));
-    if (currentSessionId === id) {
-      setCurrentSessionId(null);
+    try {
+      await deleteChatSession(id);
+      setSessions(prev => prev.filter(s => s.id !== id));
+      if (currentSessionId === id) {
+        setCurrentSessionId(null);
+      }
+    } catch (err) {
+      console.error("Delete failed", err);
     }
   };
 
   const handleRename = async (id: string, title: string) => {
-    await renameChatSession(id, title);
-    setSessions(prev => prev.map(s => s.id === id ? { ...s, title } : s));
+    try {
+      await renameChatSession(id, title);
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, title } : s));
+    } catch (err) {
+      console.error("Rename failed", err);
+    }
   };
 
   const handleTogglePin = async (id: string, isPinned: boolean) => {
-    await togglePinChat(id, isPinned);
-    setSessions(prev => {
-      const updated = prev.map(s => s.id === id ? { ...s, is_pinned: isPinned } : s);
-      return updated.sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
-    });
+    try {
+      await togglePinChat(id, isPinned);
+      setSessions(prev => {
+        const updated = prev.map(s => s.id === id ? { ...s, is_pinned: isPinned } : s);
+        return updated.sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
+      });
+    } catch (err) {
+      console.error("Pin failed", err);
+    }
   };
 
   return (
@@ -215,7 +249,7 @@ export default function AssistantPage() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 -ml-2 hover:bg-gray-50 rounded-xl"
+            className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors active:scale-95"
           >
             <Menu className="w-5 h-5 text-slate-600" />
           </button>
