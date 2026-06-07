@@ -127,6 +127,7 @@ export default function AssistantPage() {
     setIsLoading(true);
 
     // 4. Save User Message to Supabase
+    if (!sessionId) return; // TS safety
     await saveChatMessage(sessionId, "user", userMessage.content);
     
     try {
