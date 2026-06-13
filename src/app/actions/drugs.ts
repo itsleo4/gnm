@@ -64,7 +64,8 @@ Be clinical, direct, NO YAPPING.
 
   try {
     const supabase = await createClient();
-    supabase.from("drug_cache").insert({ rxcui, drug_name: name, drug_data }).catch(() => {});
+    // Fire and forget, skip .catch() to avoid TS error
+    supabase.from("drug_cache").insert({ rxcui, drug_name: name, drug_data }).then();
   } catch (e) {}
 
   return drug_data;
