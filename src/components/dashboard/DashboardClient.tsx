@@ -7,13 +7,15 @@ import { Flame, Brain, BookOpen, ClipboardList, ChevronRight, Sparkles, Activity
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-export default function DashboardClient({ profile, stats }: { profile: any; stats: any }) {
-  const firstName = profile?.full_name?.split(' ')[0] || 'Nurse';
-  const streak = profile?.streak ?? 0;
+export default function DashboardClient({ profile, stats, revisionStats }: { profile: any; stats: any; revisionStats: any }) {
   const goal = stats?.current_goal || 'Complete your first lesson';
-  const progress = stats?.weekly_progress ?? 0;
-  const syllabus = stats?.syllabus_coverage ?? 0;
-  const flashcards = stats?.mastered_flashcards ?? 0;
+  const streak = profile?.streak ?? 0;
+  
+  // Real scientific progress from revision system
+  const readiness = revisionStats?.readiness ?? 0;
+  const dueToday = revisionStats?.dueToday ?? 0;
+  const mastered = revisionStats?.mastered ?? 0;
+  const total = revisionStats?.totalTopics ?? 0;
 
   return (
     <div className="min-h-screen bg-[#faf8ff] pb-32">
@@ -43,13 +45,13 @@ export default function DashboardClient({ profile, stats }: { profile: any; stat
 
             <div className="mt-6">
               <div className="flex justify-between text-xs font-semibold mb-2">
-                <span>Weekly Progress</span>
-                <span>{progress}%</span>
+                <span>Exam Readiness</span>
+                <span>{readiness}%</span>
               </div>
               <div className="w-full bg-white/20 rounded-full h-2">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
+                  animate={{ width: `${readiness}%` }}
                   transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
                   className="bg-white h-2 rounded-full"
                 />
@@ -75,15 +77,15 @@ export default function DashboardClient({ profile, stats }: { profile: any; stat
                   strokeLinecap="round"
                   strokeDasharray="213.6"
                   initial={{ strokeDashoffset: 213.6 }}
-                  animate={{ strokeDashoffset: 213.6 * (1 - syllabus / 100) }}
+                  animate={{ strokeDashoffset: 213.6 * (1 - readiness / 100) }}
                   transition={{ duration: 1.5, ease: "easeOut", delay: 0.4 }}
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-primary font-bold text-lg">{syllabus}%</span>
+                <span className="text-primary font-bold text-lg">{readiness}%</span>
               </div>
             </div>
-            <p className="text-xs font-semibold text-gray-500 text-center">Syllabus Covered</p>
+            <p className="text-xs font-semibold text-gray-500 text-center">Learning Progress</p>
           </motion.div>
 
           <motion.div
@@ -99,8 +101,8 @@ export default function DashboardClient({ profile, stats }: { profile: any; stat
               <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-1 rounded-full">Flashcards</span>
             </div>
             <div className="mt-4">
-              <h4 className="text-3xl font-bold text-on-surface">{flashcards}</h4>
-              <p className="text-xs font-semibold text-gray-500 mt-0.5">Mastered Cards</p>
+              <h4 className="text-3xl font-bold text-on-surface">{mastered}/{total}</h4>
+              <p className="text-xs font-semibold text-gray-500 mt-0.5">Mastered Topics</p>
             </div>
           </motion.div>
         </div>

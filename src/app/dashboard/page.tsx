@@ -26,6 +26,9 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .single();
 
+  const { getRevisionStats } = await import("@/app/actions/revision");
+  const revisionStats = await getRevisionStats();
+
   // Pass profile (may be null for brand new users) — DashboardClient handles nulls gracefully
-  return <DashboardClient profile={profile} stats={stats} />;
+  return <DashboardClient profile={profile} stats={stats} revisionStats={revisionStats} />;
 }

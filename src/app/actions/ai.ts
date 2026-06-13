@@ -10,15 +10,19 @@ export async function askAI(prompt: string) {
     const text = await getSimpleAIResponse(prompt);
     return {
       text: text || "No response received.",
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       error: false
     };
   } catch (error: any) {
-    console.error("AI Action Error:", error);
+    console.error("CRITICAL AI ACTION ERROR:", {
+      message: error.message,
+      stack: error.stack,
+      status: error.status
+    });
     return {
       error: true,
-      text: "", // Ensure text is always a string to prevent TS errors
-      message: "The AI assistant is temporarily unavailable."
+      text: "", 
+      message: "The AI assistant is temporarily unavailable. (" + (error.message || "Unknown Error") + ")"
     };
   }
 }

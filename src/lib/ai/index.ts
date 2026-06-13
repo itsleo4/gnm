@@ -1,20 +1,16 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 
 // --- SYSTEM PROMPT ---
-const NURSING_SYSTEM_PROMPT = `You are an expert nursing educator and study assistant for GNM (General Nursing and Midwifery) students.
-
-Your primary mission is to help students understand complex medical concepts simply and pass their exams.
+const NURSING_SYSTEM_PROMPT = `You are "Odin AI 🫀", a senior nursing lead with sharp clinical intuition.
+Speak like a human expert: focused, natural, and direct.
 
 RULES:
-1. Answer clearly, professionally, and with empathy.
-2. For medical/nursing topics: act as an expert educator. Use structured explanations with headings and bullet points.
-3. For non-nursing topics: provide normal, high-quality, helpful responses.
-4. Response Length Logic:
-   - If the user asks for a 'short' answer or uses keywords like 'define', 'briefly', 'what is', keep it under 100 words.
-   - If the user asks for 'detail', 'explain', 'in depth', or 'exam answer', provide a comprehensive structured response.
-5. Formatting: ALWAYS use Markdown (headings, bold, bullet points, tables where helpful).
-6. Tone: Professional, encouraging, and academic.
-7. Be concise: Never produce unnecessarily long encyclopedia-style responses unless asked for detail.`;
+1. NO BOT-CHATTER: Avoid "I am an AI", "Here is your info", or "As a mentor".
+2. INSTANT TRUTH: Start your response immediately with the answer. Don't waste time on intros.
+3. HUMAN FLOW: Use a professional yet natural tone. Don't be a rigid bot; be a knowledgeable colleague.
+4. TOPIC LOCK: Stay strictly on what was asked. No tangential fluff.
+5. EXPERT DEPTH: Use your intuition to prioritize what's clinically important (ADPIE, Patho, Priority Care).
+6. IDENTITY: You are Odin AI 🫀. Knowledge delivered with natural authority.`;
 
 // --- DEV-ONLY STATUS TRACKING ---
 let lastAIStatus = {
@@ -35,7 +31,7 @@ export function getInternalAIStatus() {
 
 function updateStatus(model: string, status: string, error: string | null = null) {
   lastAIStatus = {
-    provider: "Gemini",
+    provider: "Odin AI 🫀",
     model,
     apiKeyDetected: !!process.env.GEMINI_API_KEY,
     lastStatus: status,
@@ -51,54 +47,96 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
+let discoveredModel: string | null = null;
+
+async function selectBestModel(key: string): Promise<string> {
+  if (discoveredModel) return discoveredModel as string;
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    const data = await res.json();
+    
+    if (data.models) {
+      const flashModels = data.models
+        .filter((m: any) => m.name.toLowerCase().includes("flash") && m.supportedGenerationMethods.includes("generateContent"))
+        .map((m: any) => m.name.replace("models/", ""))
+        .sort((a: string, b: string) => b.localeCompare(a));
+
+      if (flashModels.length > 0) {
+        discoveredModel = flashModels[0];
+        console.log(`[AI DISCOVERY] Using latest detected Flash model: ${discoveredModel}`);
+        return discoveredModel as string;
+      }
+    }
+  } catch (e) {
+    console.error("[AI DISCOVERY ERROR] Failed to list models:", e);
+  }
+
+  const fallback = "gemini-1.5-flash";
+  discoveredModel = fallback; 
+  return fallback;
+}
+
+async function getModel(key: string) {
+  const modelName = await selectBestModel(key);
+  const genAI = new GoogleGenerativeAI(key);
+  return genAI.getGenerativeModel({ 
+    model: modelName, 
+    safetySettings,
+    systemInstruction: NURSING_SYSTEM_PROMPT,
+    generationConfig: {
+      temperature: 0.2,
+      topP: 0.8,
+      topK: 40,
+      maxOutputTokens: 8192,
+    }
+  });
+}
+
 /**
- * GEMINI 3.5 FLASH (Agentic Optimized Engine)
+ * GEMINI DYNAMIC STREAM
  */
 export async function* getGeminiStreamResponse(prompt: string) {
-  const modelName = "gemini-3.5-flash"; 
   const key = process.env.GEMINI_API_KEY;
-  
   if (!key) throw new Error("GEMINI_API_KEY_MISSING");
 
   try {
-    const genAI = new GoogleGenerativeAI(key);
+    const model = await getModel(key);
+    const modelName = discoveredModel || "Unknown";
+    const result = await model.generateContentStream(prompt);
     
-    const lowerPrompt = prompt.toLowerCase();
-    const isShortIntent = /define|what is|briefly|short|one line|who is/.test(lowerPrompt);
-    const isDetailIntent = /explain|detail|in depth|exam|ncp|procedure/.test(lowerPrompt);
-    
-    let lengthInstruction = "";
-    if (isShortIntent) lengthInstruction = "\n\n[INSTRUCTION: Keep this answer brief and under 100 words.]";
-    if (isDetailIntent) lengthInstruction = "\n\n[INSTRUCTION: Provide a detailed, structured exam-style answer with headings.]";
-
-    const model = genAI.getGenerativeModel({ 
-      model: modelName, 
-      safetySettings,
-      systemInstruction: NURSING_SYSTEM_PROMPT
-    });
-    
-    const result = await model.generateContentStream(prompt + lengthInstruction);
-    
-    updateStatus(modelName, "Streaming Started");
-
+    updateStatus(discoveredModel || "Gemini", "Streaming Started");
     for await (const chunk of result.stream) {
-      const chunkText = chunk.text();
-      yield chunkText;
+      yield chunk.text();
     }
-    
-    updateStatus(modelName, "Connected (Stream Finished)");
+    updateStatus(discoveredModel || "Gemini", "Connected (Stream Finished)");
   } catch (error: any) {
-    console.error("[GEMINI ERROR]", error);
-    updateStatus(modelName, `Error ${error.status || "FAIL"}`, error.message);
+    console.error("[GEMINI STREAM ERROR]", error);
+    updateStatus(discoveredModel || "Gemini", `Error ${error.status || "FAIL"}`, error.message);
     throw error;
   }
 }
 
+/**
+ * GEMINI DYNAMIC DIRECT
+ */
 export async function getSimpleAIResponse(prompt: string) {
-  const stream = getGeminiStreamResponse(prompt);
-  let fullText = "";
-  for await (const chunk of stream) {
-    fullText += chunk;
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY_MISSING");
+
+  try {
+    const model = await getModel(key);
+    updateStatus(discoveredModel || "Gemini", "Direct Request Started");
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    updateStatus(discoveredModel || "Gemini", "Connected (Direct Success)");
+    return text;
+  } catch (error: any) {
+    console.error("[GEMINI DIRECT ERROR]", error);
+    updateStatus(discoveredModel || "Gemini", `Error ${error.status || "FAIL"}`, error.message);
+    throw error;
   }
-  return fullText;
 }

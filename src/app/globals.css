@@ -55,8 +55,24 @@
 }
 
 @layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    outline: none !important;
+  }
+
   body {
     @apply bg-surface text-on-surface font-sans antialiased;
+    user-select: none;
+  }
+
+  /* Allow selection in inputs only */
+  input, textarea, [contenteditable="true"] {
+    user-select: text !important;
+  }
+
+  button, a {
+    user-select: none;
   }
 
   h1, h2, h3, h4, h5, h6 {
