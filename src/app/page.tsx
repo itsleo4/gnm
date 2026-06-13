@@ -2,32 +2,33 @@
 
 import Link from "next/link";
 import { ArrowRight, Zap, Shield, ClipboardCheck, Sparkles, Heart } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LandingPage() {
   const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
+    setMounted(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setLoading(false);
     });
   }, []);
 
+  // Prevent hydration mismatch by not rendering dynamic auth bits until mounted
   return (
     <div className="min-h-screen bg-white overflow-x-hidden flex flex-col">
-      {/* Navigation - No Squeeze Header */}
+      {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-xl border-b border-slate-50">
         <div className="max-w-6xl mx-auto h-20 px-6 flex items-center justify-between gap-4">
           <div className="flex flex-col shrink-0">
             <span className="text-sm font-black tracking-tighter text-slate-900 uppercase">GNM Companion</span>
             <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mt-0.5 whitespace-nowrap">by Nitin Kumar</span>
           </div>
-          {!loading && (
+          {mounted && (
             <div className="shrink-0 flex items-center">
               <Link 
                 href={session ? "/dashboard" : "/login"} 
