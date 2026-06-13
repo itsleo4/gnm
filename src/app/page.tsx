@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Zap, Shield, ClipboardCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Zap, Shield, ClipboardCheck, Sparkles, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
