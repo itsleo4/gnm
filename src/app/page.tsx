@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Zap, Shield, ClipboardCheck, Sparkles, Heart } from "lucide-react";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
